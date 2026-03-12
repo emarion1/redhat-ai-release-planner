@@ -1445,69 +1445,6 @@
     ],
     "GA": [
       {
-        "key": "RHAISTRAT-1238",
-        "summary": "[Harden Upstream] Mature Speculative Decoding",
-        "status": "In Progress",
-        "priority": "Undefined",
-        "points": 5,
-        "original_points": 0,
-        "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
-        "target_version": null,
-        "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
-        "labels": [
-          "Approved-RFE"
-        ],
-        "rank": 9999,
-        "in_plan": false
-      },
-      {
-        "key": "RHAISTRAT-1237",
-        "summary": "[Harden Upstream] Expand WideEP (incl. /EFA) and EPLB",
-        "status": "In Progress",
-        "priority": "Undefined",
-        "points": 5,
-        "original_points": 0,
-        "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
-        "target_version": null,
-        "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
-        "labels": [
-          "Approved-RFE"
-        ],
-        "rank": 9999,
-        "in_plan": false
-      },
-      {
-        "key": "RHAISTRAT-1236",
-        "summary": "[Harden Upstream] KV Connector Support for Hybrid KV Cache",
-        "status": "In Progress",
-        "priority": "Undefined",
-        "points": 8,
-        "original_points": 0,
-        "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
-        "target_version": null,
-        "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
-        "labels": [
-          "Approved-RFE"
-        ],
-        "rank": 9999,
-        "in_plan": false
-      },
-      {
         "key": "RHAISTRAT-1159",
         "summary": "Support vLLM on CPU for RHAIIS AVX512 AMX",
         "status": "In Progress",
@@ -2744,14 +2681,14 @@
         "points": 5,
         "original_points": 0,
         "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.5"
-        ],
+        "fix_versions": [],
         "target_version": "RHAIIS-3.5",
         "target_end_date": null,
         "scheduled_to": "RHAIIS-3.5",
-        "status_category": "committed",
-        "labels": [],
+        "status_category": "planned",
+        "labels": [
+          "3.5-candidate"
+        ],
         "rank": 9999,
         "in_plan": false
       },
@@ -10537,11 +10474,11 @@
       "vs_median_pct": 544
     },
     "GA": {
-      "features": 6,
-      "points": 42,
-      "capacity_status": "typical",
-      "color": "#90ee90",
-      "vs_median_pct": 53
+      "features": 3,
+      "points": 24,
+      "capacity_status": "conservative",
+      "color": "#28a745",
+      "vs_median_pct": -13
     },
     "Unspecified": {
       "features": 50,
@@ -11289,12 +11226,13 @@
       "RHAISTRAT-1172",
       "RHAISTRAT-1130",
       "RHAISTRAT-171",
+      "RHAISTRAT-1295",
       "RHAISTRAT-1290",
       "RHAISTRAT-1287",
       "RHAISTRAT-764",
-      "RHAISTRAT-721"
+      "RHAISTRAT-627"
     ],
-    "points": 78,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.5-EA2": {
@@ -11305,11 +11243,12 @@
       "RHAISTRAT-1283",
       "RHAISTRAT-1282",
       "RHAISTRAT-763",
-      "RHAISTRAT-720",
-      "RHAISTRAT-669",
-      "RHAISTRAT-604"
+      "RHAISTRAT-721",
+      "RHAISTRAT-679",
+      "RHAISTRAT-625",
+      "RHAISTRAT-589"
     ],
-    "points": 78,
+    "points": 79,
     "capacity_status": "aggressive"
   },
   "3.5-GA": {
@@ -11322,11 +11261,11 @@
       "RHAISTRAT-1257",
       "RHAISTRAT-1256",
       "RHAISTRAT-762",
-      "RHAISTRAT-719",
-      "RHAISTRAT-668",
-      "RHAISTRAT-603"
+      "RHAISTRAT-720",
+      "RHAISTRAT-669",
+      "RHAISTRAT-588"
     ],
-    "points": 78,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.6-EA1": {
@@ -11339,184 +11278,185 @@
       "RHAISTRAT-1248",
       "RHAISTRAT-1247",
       "RHAISTRAT-759",
-      "RHAISTRAT-718",
-      "RHAISTRAT-370"
+      "RHAISTRAT-719",
+      "RHAISTRAT-474"
     ],
     "points": 79,
     "capacity_status": "aggressive"
   },
   "3.6-EA2": {
     "features": [
+      "RHAISTRAT-1238",
+      "RHAISTRAT-1237",
+      "RHAISTRAT-1236",
       "RHAISTRAT-1235",
       "RHAISTRAT-1232",
       "RHAISTRAT-1231",
       "RHAISTRAT-1230",
-      "RHAISTRAT-1229",
-      "RHAISTRAT-1222",
-      "RHAISTRAT-1220",
       "RHAISTRAT-757",
-      "RHAISTRAT-717",
-      "RHAISTRAT-665",
-      "RHAISTRAT-564"
+      "RHAISTRAT-718",
+      "RHAISTRAT-668",
+      "RHAISTRAT-623"
     ],
     "points": 78,
     "capacity_status": "aggressive"
   },
   "3.6-GA": {
     "features": [
+      "RHAISTRAT-1229",
+      "RHAISTRAT-1222",
+      "RHAISTRAT-1220",
       "RHAISTRAT-1219",
       "RHAISTRAT-1218",
       "RHAISTRAT-1215",
       "RHAISTRAT-1214",
-      "RHAISTRAT-1213",
-      "RHAISTRAT-1209",
       "RHAISTRAT-756",
-      "RHAISTRAT-713",
-      "RHAISTRAT-664",
-      "RHAISTRAT-602",
-      "RHAISTRAT-548"
+      "RHAISTRAT-717",
+      "RHAISTRAT-665",
+      "RHAISTRAT-469"
     ],
     "points": 79,
     "capacity_status": "aggressive"
   },
   "3.7-EA1": {
     "features": [
+      "RHAISTRAT-1213",
+      "RHAISTRAT-1209",
       "RHAISTRAT-1207",
       "RHAISTRAT-1203",
       "RHAISTRAT-1202",
       "RHAISTRAT-1201",
       "RHAISTRAT-1199",
       "RHAISTRAT-1198",
-      "RHAISTRAT-1197",
-      "RHAISTRAT-1195",
-      "RHAISTRAT-1191",
       "RHAISTRAT-754",
-      "RHAISTRAT-711",
-      "RHAISTRAT-663",
-      "RHAISTRAT-633"
+      "RHAISTRAT-713",
+      "RHAISTRAT-664",
+      "RHAISTRAT-622",
+      "RHAISTRAT-388"
     ],
-    "points": 80,
+    "points": 79,
     "capacity_status": "aggressive"
   },
   "3.7-EA2": {
     "features": [
+      "RHAISTRAT-1197",
+      "RHAISTRAT-1195",
+      "RHAISTRAT-1191",
       "RHAISTRAT-1190",
       "RHAISTRAT-1187",
       "RHAISTRAT-1182",
       "RHAISTRAT-1181",
       "RHAISTRAT-1180",
-      "RHAISTRAT-1179",
-      "RHAISTRAT-1178",
       "RHAISTRAT-749",
-      "RHAISTRAT-710",
-      "RHAISTRAT-662",
-      "RHAISTRAT-630"
-    ],
-    "points": 79,
-    "capacity_status": "aggressive"
-  },
-  "3.7-GA": {
-    "features": [
-      "RHAISTRAT-1175",
-      "RHAISTRAT-1173",
-      "RHAISTRAT-1169",
-      "RHAISTRAT-1168",
-      "RHAISTRAT-1164",
-      "RHAISTRAT-1160",
-      "RHAISTRAT-1153",
-      "RHAISTRAT-1147",
-      "RHAISTRAT-747",
-      "RHAISTRAT-709",
-      "RHAISTRAT-661",
-      "RHAISTRAT-628",
-      "RHAISTRAT-601"
-    ],
-    "points": 78,
-    "capacity_status": "aggressive"
-  },
-  "3.8-EA1": {
-    "features": [
-      "RHAISTRAT-1146",
-      "RHAISTRAT-1145",
-      "RHAISTRAT-1144",
-      "RHAISTRAT-1143",
-      "RHAISTRAT-1141",
-      "RHAISTRAT-1132",
-      "RHAISTRAT-746",
-      "RHAISTRAT-703",
-      "RHAISTRAT-659",
-      "RHAISTRAT-627"
+      "RHAISTRAT-711",
+      "RHAISTRAT-663",
+      "RHAISTRAT-619",
+      "RHAISTRAT-578"
     ],
     "points": 80,
     "capacity_status": "aggressive"
   },
+  "3.7-GA": {
+    "features": [
+      "RHAISTRAT-1179",
+      "RHAISTRAT-1178",
+      "RHAISTRAT-1175",
+      "RHAISTRAT-1173",
+      "RHAISTRAT-1169",
+      "RHAISTRAT-1168",
+      "RHAISTRAT-747",
+      "RHAISTRAT-710",
+      "RHAISTRAT-662",
+      "RHAISTRAT-639",
+      "RHAISTRAT-577"
+    ],
+    "points": 79,
+    "capacity_status": "aggressive"
+  },
+  "3.8-EA1": {
+    "features": [
+      "RHAISTRAT-1164",
+      "RHAISTRAT-1160",
+      "RHAISTRAT-1153",
+      "RHAISTRAT-1147",
+      "RHAISTRAT-1146",
+      "RHAISTRAT-1145",
+      "RHAISTRAT-1144",
+      "RHAISTRAT-746",
+      "RHAISTRAT-709",
+      "RHAISTRAT-661",
+      "RHAISTRAT-637",
+      "RHAISTRAT-573"
+    ],
+    "points": 78,
+    "capacity_status": "aggressive"
+  },
   "3.8-EA2": {
     "features": [
+      "RHAISTRAT-1143",
+      "RHAISTRAT-1141",
+      "RHAISTRAT-1132",
       "RHAISTRAT-1122",
       "RHAISTRAT-1121",
       "RHAISTRAT-1118",
       "RHAISTRAT-1115",
-      "RHAISTRAT-1111",
-      "RHAISTRAT-1091",
       "RHAISTRAT-745",
-      "RHAISTRAT-702",
-      "RHAISTRAT-656"
+      "RHAISTRAT-703"
     ],
     "points": 78,
     "capacity_status": "aggressive"
   },
   "3.8-GA": {
     "features": [
+      "RHAISTRAT-1111",
+      "RHAISTRAT-1091",
       "RHAISTRAT-1089",
       "RHAISTRAT-1085",
       "RHAISTRAT-1083",
       "RHAISTRAT-1082",
       "RHAISTRAT-1080",
-      "RHAISTRAT-1079",
       "RHAISTRAT-744",
-      "RHAISTRAT-699",
-      "RHAISTRAT-655",
-      "RHAISTRAT-625",
-      "RHAISTRAT-591"
+      "RHAISTRAT-702",
+      "RHAISTRAT-635"
     ],
-    "points": 79,
+    "points": 78,
     "capacity_status": "aggressive"
   },
   "3.9-EA1": {
     "features": [
+      "RHAISTRAT-1079",
       "RHAISTRAT-1078",
       "RHAISTRAT-1065",
       "RHAISTRAT-1064",
       "RHAISTRAT-1062",
       "RHAISTRAT-1059",
-      "RHAISTRAT-1058",
       "RHAISTRAT-739",
-      "RHAISTRAT-696",
-      "RHAISTRAT-654",
-      "RHAISTRAT-623"
+      "RHAISTRAT-699",
+      "RHAISTRAT-659"
     ],
     "points": 79,
     "capacity_status": "aggressive"
   },
   "3.9-EA2": {
     "features": [
+      "RHAISTRAT-1058",
       "RHAISTRAT-1054",
       "RHAISTRAT-1053",
       "RHAISTRAT-1051",
       "RHAISTRAT-1047",
       "RHAISTRAT-1046",
       "RHAISTRAT-1043",
-      "RHAISTRAT-1042",
       "RHAISTRAT-738",
-      "RHAISTRAT-695",
-      "RHAISTRAT-653",
-      "RHAISTRAT-622"
+      "RHAISTRAT-696",
+      "RHAISTRAT-656",
+      "RHAISTRAT-617"
     ],
     "points": 80,
     "capacity_status": "aggressive"
   },
   "3.9-GA": {
     "features": [
+      "RHAISTRAT-1042",
       "RHAISTRAT-1041",
       "RHAISTRAT-1015",
       "RHAISTRAT-995",
@@ -11525,18 +11465,17 @@
       "RHAISTRAT-992",
       "RHAISTRAT-991",
       "RHAISTRAT-977",
-      "RHAISTRAT-976",
       "RHAISTRAT-737",
-      "RHAISTRAT-693",
-      "RHAISTRAT-652",
-      "RHAISTRAT-619",
-      "RHAISTRAT-589"
+      "RHAISTRAT-695",
+      "RHAISTRAT-655",
+      "RHAISTRAT-616"
     ],
-    "points": 79,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.10-EA1": {
     "features": [
+      "RHAISTRAT-976",
       "RHAISTRAT-974",
       "RHAISTRAT-973",
       "RHAISTRAT-972",
@@ -11544,11 +11483,11 @@
       "RHAISTRAT-969",
       "RHAISTRAT-968",
       "RHAISTRAT-734",
-      "RHAISTRAT-692",
-      "RHAISTRAT-651",
-      "RHAISTRAT-617"
+      "RHAISTRAT-693",
+      "RHAISTRAT-654",
+      "RHAISTRAT-615"
     ],
-    "points": 78,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.10-EA2": {
@@ -11561,9 +11500,9 @@
       "RHAISTRAT-949",
       "RHAISTRAT-948",
       "RHAISTRAT-730",
-      "RHAISTRAT-691",
-      "RHAISTRAT-649",
-      "RHAISTRAT-588"
+      "RHAISTRAT-692",
+      "RHAISTRAT-653",
+      "RHAISTRAT-614"
     ],
     "points": 78,
     "capacity_status": "aggressive"
@@ -11579,11 +11518,11 @@
       "RHAISTRAT-858",
       "RHAISTRAT-856",
       "RHAISTRAT-729",
-      "RHAISTRAT-690",
-      "RHAISTRAT-647",
-      "RHAISTRAT-528"
+      "RHAISTRAT-691",
+      "RHAISTRAT-652",
+      "RHAISTRAT-612"
     ],
-    "points": 79,
+    "points": 78,
     "capacity_status": "aggressive"
   },
   "3.11-EA1": {
@@ -11596,12 +11535,12 @@
       "RHAISTRAT-846",
       "RHAISTRAT-845",
       "RHAISTRAT-728",
-      "RHAISTRAT-689",
-      "RHAISTRAT-645",
-      "RHAISTRAT-616",
-      "RHAISTRAT-474"
+      "RHAISTRAT-690",
+      "RHAISTRAT-651",
+      "RHAISTRAT-608",
+      "RHAISTRAT-370"
     ],
-    "points": 80,
+    "points": 80.0,
     "capacity_status": "aggressive"
   },
   "3.11-EA2": {
@@ -11614,12 +11553,12 @@
       "RHAISTRAT-832",
       "RHAISTRAT-829",
       "RHAISTRAT-727",
-      "RHAISTRAT-688",
-      "RHAISTRAT-641",
-      "RHAISTRAT-615",
-      "RHAISTRAT-469"
+      "RHAISTRAT-689",
+      "RHAISTRAT-649",
+      "RHAISTRAT-605",
+      "RHAISTRAT-564"
     ],
-    "points": 79,
+    "points": 78,
     "capacity_status": "aggressive"
   },
   "3.11-GA": {
@@ -11634,12 +11573,12 @@
       "RHAISTRAT-815",
       "RHAISTRAT-814",
       "RHAISTRAT-725",
-      "RHAISTRAT-685",
-      "RHAISTRAT-640",
-      "RHAISTRAT-614",
-      "RHAISTRAT-578"
+      "RHAISTRAT-688",
+      "RHAISTRAT-647",
+      "RHAISTRAT-604",
+      "RHAISTRAT-548"
     ],
-    "points": 79,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.12-EA1": {
@@ -11651,11 +11590,12 @@
       "RHAISTRAT-802",
       "RHAISTRAT-800",
       "RHAISTRAT-724",
-      "RHAISTRAT-684",
-      "RHAISTRAT-639",
-      "RHAISTRAT-612"
+      "RHAISTRAT-685",
+      "RHAISTRAT-645",
+      "RHAISTRAT-633",
+      "RHAISTRAT-528"
     ],
-    "points": 78,
+    "points": 79,
     "capacity_status": "aggressive"
   },
   "3.12-EA2": {
@@ -11669,13 +11609,12 @@
       "RHAISTRAT-778",
       "RHAISTRAT-776",
       "RHAISTRAT-723",
-      "RHAISTRAT-680",
-      "RHAISTRAT-637",
-      "RHAISTRAT-608",
-      "RHAISTRAT-577",
-      "RHAISTRAT-388"
+      "RHAISTRAT-684",
+      "RHAISTRAT-641",
+      "RHAISTRAT-630",
+      "RHAISTRAT-601"
     ],
-    "points": 79.0,
+    "points": 80,
     "capacity_status": "aggressive"
   },
   "3.12-GA": {
@@ -11688,10 +11627,10 @@
       "RHAISTRAT-766",
       "RHAISTRAT-765",
       "RHAISTRAT-722",
-      "RHAISTRAT-679",
-      "RHAISTRAT-635",
-      "RHAISTRAT-605",
-      "RHAISTRAT-573"
+      "RHAISTRAT-680",
+      "RHAISTRAT-640",
+      "RHAISTRAT-628",
+      "RHAISTRAT-591"
     ],
     "points": 78,
     "capacity_status": "aggressive"
@@ -11701,6 +11640,32 @@
         // Backlog analysis data
         const backlogAnalysis = {
   "phasing_results": [
+    {
+      "feature": {
+        "key": "RHAISTRAT-1295",
+        "summary": "[DP] External Model Egress via Inference Gateway",
+        "status": "New",
+        "priority": "Major",
+        "points": 5,
+        "original_points": 0,
+        "auto_sized": true,
+        "fix_versions": [],
+        "target_version": null,
+        "target_end_date": null,
+        "scheduled_to": null,
+        "status_category": "unscheduled",
+        "labels": [
+          "3.4-candidate"
+        ],
+        "rank": 9999,
+        "in_plan": false
+      },
+      "analysis": {
+        "phaseable": false,
+        "recommendation": "Deliver in single release event (GA preferred)",
+        "complexity": "Low"
+      }
+    },
     {
       "feature": {
         "key": "RHAISTRAT-1291",
@@ -12154,14 +12119,14 @@
         "points": 5,
         "original_points": 0,
         "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.5"
-        ],
+        "fix_versions": [],
         "target_version": "RHAIIS-3.5",
         "target_end_date": null,
         "scheduled_to": "RHAIIS-3.5",
-        "status_category": "committed",
-        "labels": [],
+        "status_category": "planned",
+        "labels": [
+          "3.5-candidate"
+        ],
         "rank": 9999,
         "in_plan": false
       },
@@ -12699,14 +12664,13 @@
         "points": 5,
         "original_points": 0,
         "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
+        "fix_versions": [],
         "target_version": null,
         "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
+        "scheduled_to": null,
+        "status_category": "unscheduled",
         "labels": [
+          "3.4-committed",
           "Approved-RFE"
         ],
         "rank": 9999,
@@ -12727,14 +12691,13 @@
         "points": 5,
         "original_points": 0,
         "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
+        "fix_versions": [],
         "target_version": null,
         "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
+        "scheduled_to": null,
+        "status_category": "unscheduled",
         "labels": [
+          "3.4-committed",
           "Approved-RFE"
         ],
         "rank": 9999,
@@ -12755,14 +12718,13 @@
         "points": 8,
         "original_points": 0,
         "auto_sized": true,
-        "fix_versions": [
-          "RHAIIS-3.4 GA"
-        ],
+        "fix_versions": [],
         "target_version": null,
         "target_end_date": null,
-        "scheduled_to": "RHAIIS-3.4 GA",
-        "status_category": "committed",
+        "scheduled_to": null,
+        "status_category": "unscheduled",
         "labels": [
+          "3.4-committed",
           "Approved-RFE"
         ],
         "rank": 9999,
@@ -41217,14 +41179,13 @@
             "points": 8,
             "original_points": 0,
             "auto_sized": true,
-            "fix_versions": [
-              "RHAIIS-3.4 GA"
-            ],
+            "fix_versions": [],
             "target_version": null,
             "target_end_date": null,
-            "scheduled_to": "RHAIIS-3.4 GA",
-            "status_category": "committed",
+            "scheduled_to": null,
+            "status_category": "unscheduled",
             "labels": [
+              "3.4-committed",
               "Approved-RFE"
             ],
             "rank": 9999,
@@ -50686,11 +50647,30 @@
           }
         ],
         "total_points": 3880.0,
-        "percentage": 48.4
+        "percentage": 48.3
       },
       "M": {
-        "count": 379,
+        "count": 380,
         "features": [
+          {
+            "key": "RHAISTRAT-1295",
+            "summary": "[DP] External Model Egress via Inference Gateway",
+            "status": "New",
+            "priority": "Major",
+            "points": 5,
+            "original_points": 0,
+            "auto_sized": true,
+            "fix_versions": [],
+            "target_version": null,
+            "target_end_date": null,
+            "scheduled_to": null,
+            "status_category": "unscheduled",
+            "labels": [
+              "3.4-candidate"
+            ],
+            "rank": 9999,
+            "in_plan": false
+          },
           {
             "key": "RHAISTRAT-1291",
             "summary": "Use AIPCC wheels in remaining Notebook images",
@@ -50790,14 +50770,14 @@
             "points": 5,
             "original_points": 0,
             "auto_sized": true,
-            "fix_versions": [
-              "RHAIIS-3.5"
-            ],
+            "fix_versions": [],
             "target_version": "RHAIIS-3.5",
             "target_end_date": null,
             "scheduled_to": "RHAIIS-3.5",
-            "status_category": "committed",
-            "labels": [],
+            "status_category": "planned",
+            "labels": [
+              "3.5-candidate"
+            ],
             "rank": 9999,
             "in_plan": false
           },
@@ -50959,14 +50939,13 @@
             "points": 5,
             "original_points": 0,
             "auto_sized": true,
-            "fix_versions": [
-              "RHAIIS-3.4 GA"
-            ],
+            "fix_versions": [],
             "target_version": null,
             "target_end_date": null,
-            "scheduled_to": "RHAIIS-3.4 GA",
-            "status_category": "committed",
+            "scheduled_to": null,
+            "status_category": "unscheduled",
             "labels": [
+              "3.4-committed",
               "Approved-RFE"
             ],
             "rank": 9999,
@@ -50980,14 +50959,13 @@
             "points": 5,
             "original_points": 0,
             "auto_sized": true,
-            "fix_versions": [
-              "RHAIIS-3.4 GA"
-            ],
+            "fix_versions": [],
             "target_version": null,
             "target_end_date": null,
-            "scheduled_to": "RHAIIS-3.4 GA",
-            "status_category": "committed",
+            "scheduled_to": null,
+            "status_category": "unscheduled",
             "labels": [
+              "3.4-committed",
               "Approved-RFE"
             ],
             "rank": 9999,
@@ -58055,7 +58033,7 @@
             "in_plan": false
           }
         ],
-        "total_points": 1895,
+        "total_points": 1900,
         "percentage": 37.8
       },
       "S": {
@@ -58695,12 +58673,12 @@
         "percentage": 0.2
       }
     },
-    "total_features": 1003,
-    "total_points": 7259.0,
+    "total_features": 1004,
+    "total_points": 7264.0,
     "recommendations": [
       {
         "type": "success",
-        "message": "Ideal distribution: S(35%), M(40%), L(20%), XL(<5%). Current: S(3.0%), M(37.8%), L(48.4%), XL(10.7%)",
+        "message": "Ideal distribution: S(35%), M(40%), L(20%), XL(<5%). Current: S(3.0%), M(37.8%), L(48.3%), XL(10.7%)",
         "impact": "info"
       }
     ],
@@ -62575,7 +62553,7 @@
   },
   "insights": {
     "phasing": {
-      "total": 1003,
+      "total": 1004,
       "phaseable": 586,
       "percentage": 58.4
     },
@@ -65106,14 +65084,13 @@
               "points": 8,
               "original_points": 0,
               "auto_sized": true,
-              "fix_versions": [
-                "RHAIIS-3.4 GA"
-              ],
+              "fix_versions": [],
               "target_version": null,
               "target_end_date": null,
-              "scheduled_to": "RHAIIS-3.4 GA",
-              "status_category": "committed",
+              "scheduled_to": null,
+              "status_category": "unscheduled",
               "labels": [
+                "3.4-committed",
                 "Approved-RFE"
               ],
               "rank": 9999,
@@ -74575,11 +74552,30 @@
             }
           ],
           "total_points": 3880.0,
-          "percentage": 48.4
+          "percentage": 48.3
         },
         "M": {
-          "count": 379,
+          "count": 380,
           "features": [
+            {
+              "key": "RHAISTRAT-1295",
+              "summary": "[DP] External Model Egress via Inference Gateway",
+              "status": "New",
+              "priority": "Major",
+              "points": 5,
+              "original_points": 0,
+              "auto_sized": true,
+              "fix_versions": [],
+              "target_version": null,
+              "target_end_date": null,
+              "scheduled_to": null,
+              "status_category": "unscheduled",
+              "labels": [
+                "3.4-candidate"
+              ],
+              "rank": 9999,
+              "in_plan": false
+            },
             {
               "key": "RHAISTRAT-1291",
               "summary": "Use AIPCC wheels in remaining Notebook images",
@@ -74679,14 +74675,14 @@
               "points": 5,
               "original_points": 0,
               "auto_sized": true,
-              "fix_versions": [
-                "RHAIIS-3.5"
-              ],
+              "fix_versions": [],
               "target_version": "RHAIIS-3.5",
               "target_end_date": null,
               "scheduled_to": "RHAIIS-3.5",
-              "status_category": "committed",
-              "labels": [],
+              "status_category": "planned",
+              "labels": [
+                "3.5-candidate"
+              ],
               "rank": 9999,
               "in_plan": false
             },
@@ -74848,14 +74844,13 @@
               "points": 5,
               "original_points": 0,
               "auto_sized": true,
-              "fix_versions": [
-                "RHAIIS-3.4 GA"
-              ],
+              "fix_versions": [],
               "target_version": null,
               "target_end_date": null,
-              "scheduled_to": "RHAIIS-3.4 GA",
-              "status_category": "committed",
+              "scheduled_to": null,
+              "status_category": "unscheduled",
               "labels": [
+                "3.4-committed",
                 "Approved-RFE"
               ],
               "rank": 9999,
@@ -74869,14 +74864,13 @@
               "points": 5,
               "original_points": 0,
               "auto_sized": true,
-              "fix_versions": [
-                "RHAIIS-3.4 GA"
-              ],
+              "fix_versions": [],
               "target_version": null,
               "target_end_date": null,
-              "scheduled_to": "RHAIIS-3.4 GA",
-              "status_category": "committed",
+              "scheduled_to": null,
+              "status_category": "unscheduled",
               "labels": [
+                "3.4-committed",
                 "Approved-RFE"
               ],
               "rank": 9999,
@@ -81944,7 +81938,7 @@
               "in_plan": false
             }
           ],
-          "total_points": 1895,
+          "total_points": 1900,
           "percentage": 37.8
         },
         "S": {
@@ -82584,12 +82578,12 @@
           "percentage": 0.2
         }
       },
-      "total_features": 1003,
-      "total_points": 7259.0,
+      "total_features": 1004,
+      "total_points": 7264.0,
       "recommendations": [
         {
           "type": "success",
-          "message": "Ideal distribution: S(35%), M(40%), L(20%), XL(<5%). Current: S(3.0%), M(37.8%), L(48.4%), XL(10.7%)",
+          "message": "Ideal distribution: S(35%), M(40%), L(20%), XL(<5%). Current: S(3.0%), M(37.8%), L(48.3%), XL(10.7%)",
           "impact": "info"
         }
       ],
@@ -86468,6 +86462,10 @@
 
         // Full feature lookup for getting names and details
         const allFeatures = {
+  "RHAISTRAT-1295": {
+    "summary": "[DP] External Model Egress via Inference Gateway",
+    "points": 5
+  },
   "RHAISTRAT-1291": {
     "summary": "Use AIPCC wheels in remaining Notebook images",
     "points": 5
@@ -90518,6 +90516,11 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-1295",
+          "summary": "[DP] External Model Egress via Inference Gateway",
+          "points": 5
+        },
+        {
           "key": "RHAISTRAT-1290",
           "summary": "Infuse Agent Deployment/Runtime (Kagenti) Best Practices into Agent Templates",
           "points": 5
@@ -90528,27 +90531,27 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-764-P1",
-          "summary": "Deploying RHOAI on FIPS-Enabled ROSA Cluster... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-723",
-          "summary": "Prompt Generation with Feature Dependencies and Feature Services",
+          "key": "RHAISTRAT-766",
+          "summary": "configure accelerator typ via CodeFlare SDK",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-685",
-          "summary": "Kubeflow Training Operator (KFTO) Local Mode",
+          "key": "RHAISTRAT-725",
+          "summary": "Having a proper display of which are the source images used for Workbenches",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-639-P1",
-          "summary": "Automation Integration (pipelines)... (Part 1: Core)",
+          "key": "RHAISTRAT-689",
+          "summary": "Multi-arch component builds follow on",
           "points": 8
+        },
+        {
+          "key": "RHAISTRAT-641",
+          "summary": "Enhanced Guardrail Detection and vLLM Emulation",
+          "points": 5
         }
       ],
-      "points": 78,
+      "points": 80,
       "capacity_status": "aggressive"
     },
     "3.5-EA2": {
@@ -90594,32 +90597,27 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-764-P2",
-          "summary": "Deploying RHOAI on FIPS-Enabled ROSA Cluster... (Part 2: Extended)",
+          "key": "RHAISTRAT-765",
+          "summary": "llm-d: E2E encrytion : vllm to vllm Nixl communication encryption",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-722",
-          "summary": "AutoScaling distributed workload job resources",
+          "key": "RHAISTRAT-724",
+          "summary": "IDE Release Automation",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-684",
-          "summary": "Platform research on Dynamic Resource Allocation available on OCP 4.21",
-          "points": 5
+          "key": "RHAISTRAT-688",
+          "summary": "FlowYard: Build your Own Notebook",
+          "points": 8
         },
         {
-          "key": "RHAISTRAT-639-P2",
-          "summary": "Automation Integration (pipelines)... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-578",
-          "summary": "[RFE] RAG Fine-Tuning with Feature Store and KFTO for Scalable AI Workflows",
+          "key": "RHAISTRAT-605",
+          "summary": "Generalized Numeric Data Drift detection",
           "points": 5
         }
       ],
-      "points": 80,
+      "points": 78,
       "capacity_status": "aggressive"
     },
     "3.5-GA": {
@@ -90665,23 +90663,23 @@
           "points": 5
         },
         {
-          "key": "RHAISTRAT-763",
-          "summary": "KServe Upstream Efforts",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-721",
-          "summary": "RHOAI DSP Artifact Lineage",
+          "key": "RHAISTRAT-764-P1",
+          "summary": "Deploying RHOAI on FIPS-Enabled ROSA Cluster... (Part 1: Core)",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-680",
-          "summary": "Projects list - ability to sort by edit date",
+          "key": "RHAISTRAT-723",
+          "summary": "Prompt Generation with Feature Dependencies and Feature Services",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-637",
-          "summary": "Bring your own Notebook - Build Images on Openshift AI",
+          "key": "RHAISTRAT-685",
+          "summary": "Kubeflow Training Operator (KFTO) Local Mode",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-640",
+          "summary": "Backend support for KServe Raw",
           "points": 8
         }
       ],
@@ -90731,24 +90729,24 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-762",
-          "summary": "incorporate usability testing conclusions and recommendations",
+          "key": "RHAISTRAT-764-P2",
+          "summary": "Deploying RHOAI on FIPS-Enabled ROSA Cluster... (Part 2: Extended)",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-720",
-          "summary": "Streamlined Model Tuning with Predefined Pipeline Templates",
+          "key": "RHAISTRAT-722",
+          "summary": "AutoScaling distributed workload job resources",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-679",
-          "summary": "support for distributed training using Kubeflow Training Operator (KFTO) and MPI/Tensorflow",
+          "key": "RHAISTRAT-684",
+          "summary": "Platform research on Dynamic Resource Allocation available on OCP 4.21",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-639-P1",
+          "summary": "Automation Integration (pipelines)... (Part 1: Core)",
           "points": 8
-        },
-        {
-          "key": "RHAISTRAT-635",
-          "summary": "Evaluation Topic Classification Detectors",
-          "points": 5
         }
       ],
       "points": 78,
@@ -90756,6 +90754,21 @@
     },
     "3.6-EA2": {
       "features": [
+        {
+          "key": "RHAISTRAT-1238",
+          "summary": "[Harden Upstream] Mature Speculative Decoding",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1237",
+          "summary": "[Harden Upstream] Expand WideEP (incl. /EFA) and EPLB",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1236",
+          "summary": "[Harden Upstream] KV Connector Support for Hybrid KV Cache",
+          "points": 8
+        },
         {
           "key": "RHAISTRAT-1235-P1",
           "summary": "[TP] MaaS Observability & Showback... (Part 1: Core)",
@@ -90782,6 +90795,37 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-763",
+          "summary": "KServe Upstream Efforts",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-721",
+          "summary": "RHOAI DSP Artifact Lineage",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-680",
+          "summary": "Projects list - ability to sort by edit date",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-639-P2",
+          "summary": "Automation Integration (pipelines)... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-604",
+          "summary": "Foundational Observability for RHOAI - KServe + Cluster-view ",
+          "points": 5
+        }
+      ],
+      "points": 80,
+      "capacity_status": "aggressive"
+    },
+    "3.6-GA": {
+      "features": [
+        {
           "key": "RHAISTRAT-1229",
           "summary": "[TEST] Feature for type-change testing",
           "points": 5
@@ -90796,27 +90840,6 @@
           "summary": "Central Orchestration Foundation: Phase 2 - E2E TestOps Ecosystem across ODH & RHOAI",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-759-P1",
-          "summary": "Update RHOAI Architecture Document... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-719",
-          "summary": "NVLink Support for RHOAI",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-669-P1",
-          "summary": "Integration of Distributed Workloads in Tuning Pipelines... (Part 1: Core)",
-          "points": 8
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.6-GA": {
-      "features": [
         {
           "key": "RHAISTRAT-1219",
           "summary": "Actionable Reporting & Failure Triage: Phase 1 - E2E TestOps Ecosystem across ODH & RHOAI",
@@ -90838,6 +90861,37 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-762",
+          "summary": "incorporate usability testing conclusions and recommendations",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-720",
+          "summary": "Streamlined Model Tuning with Predefined Pipeline Templates",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-679",
+          "summary": "support for distributed training using Kubeflow Training Operator (KFTO) and MPI/Tensorflow",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-637",
+          "summary": "Bring your own Notebook - Build Images on Openshift AI",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-591",
+          "summary": "Custom notebooks UI enhancements - part 2",
+          "points": 3
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.7-EA1": {
+      "features": [
+        {
           "key": "RHAISTRAT-1214-P2",
           "summary": "[DP] Agent - MLflow Tracing Integration ... (Part 2: Extended)",
           "points": 5
@@ -90852,37 +90906,6 @@
           "summary": "Provide Distributed Inference with llm-d on xKS- GA",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-759-P2",
-          "summary": "Update RHOAI Architecture Document... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-718",
-          "summary": "Model Registry: support Edit, document/support Delete",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-669-P2",
-          "summary": "Integration of Distributed Workloads in Tuning Pipelines... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-633-P1",
-          "summary": "Enabling workload integration for pods/deployments/Stateful ... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-577",
-          "summary": "Allow setting fractional values for resources in UI for model serving",
-          "points": 3
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.7-EA1": {
-      "features": [
         {
           "key": "RHAISTRAT-1207",
           "summary": "Support pass criteria for evaluations",
@@ -90909,6 +90932,32 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-759-P1",
+          "summary": "Update RHOAI Architecture Document... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-719",
+          "summary": "NVLink Support for RHOAI",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-669-P1",
+          "summary": "Integration of Distributed Workloads in Tuning Pipelines... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-635",
+          "summary": "Evaluation Topic Classification Detectors",
+          "points": 5
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.7-EA2": {
+      "features": [
+        {
           "key": "RHAISTRAT-1198",
           "summary": "Implement End-to-End Distributed Tracing for llm-d",
           "points": 8
@@ -90927,6 +90976,87 @@
           "key": "RHAISTRAT-1191",
           "summary": "AutoML Backend: Kubeflow Pipelines orchestration using Autogluon, Kserve, Model Registry",
           "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1190",
+          "summary": "Build key visualization packages and publish in the RH AI Python Index",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1187",
+          "summary": "llm-d: Enable Online Batching with Deferrable Scheduling Protection",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1182",
+          "summary": "Introduce a \u201cCustomize\u201d Entry Point in the Model Catalog for Example-Driven Model Adaptation & Discoverability of Model Customization ",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1181",
+          "summary": "Synthetic Data Generation for Automated Model Safety Validation & Red Teaming",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-759-P2",
+          "summary": "Update RHOAI Architecture Document... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-718",
+          "summary": "Model Registry: support Edit, document/support Delete",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-669-P2",
+          "summary": "Integration of Distributed Workloads in Tuning Pipelines... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-633-P1",
+          "summary": "Enabling workload integration for pods/deployments/Stateful ... (Part 1: Core)",
+          "points": 8
+        }
+      ],
+      "points": 78,
+      "capacity_status": "aggressive"
+    },
+    "3.7-GA": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1180",
+          "summary": "[Summit] Backend Report Artifact Generation for Security Testing + Storage",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1179",
+          "summary": "[Summit] Refactor AIMI/Chatterbox Logic into Garak (Python)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1178",
+          "summary": "[Summit] Chatterbox Security Testing via Garak (Backend Evaluation Flow)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1175-P1",
+          "summary": "KFTO/Kueue Migration Analysis Tool for 2.25 to 3.3 Upgrade... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1175-P2",
+          "summary": "KFTO/Kueue Migration Analysis Tool for 2.25 to 3.3 Upgrade... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1173",
+          "summary": "Introduce an AI Safety Starter Kit and Documentation",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1169",
+          "summary": "Enable RHOAI Operator to run on non-OpenShift Kubernetes clusters (xKS)",
+          "points": 8
         },
         {
           "key": "RHAISTRAT-757",
@@ -90949,97 +91079,16 @@
           "points": 5
         },
         {
-          "key": "RHAISTRAT-573",
-          "summary": "Custom UI Branding",
+          "key": "RHAISTRAT-577",
+          "summary": "Allow setting fractional values for resources in UI for model serving",
           "points": 3
-        }
-      ],
-      "points": 78,
-      "capacity_status": "aggressive"
-    },
-    "3.7-EA2": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1190",
-          "summary": "Build key visualization packages and publish in the RH AI Python Index",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1187",
-          "summary": "llm-d: Enable Online Batching with Deferrable Scheduling Protection",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1182",
-          "summary": "Introduce a \u201cCustomize\u201d Entry Point in the Model Catalog for Example-Driven Model Adaptation & Discoverability of Model Customization ",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1181",
-          "summary": "Synthetic Data Generation for Automated Model Safety Validation & Red Teaming",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1180",
-          "summary": "[Summit] Backend Report Artifact Generation for Security Testing + Storage",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1179",
-          "summary": "[Summit] Refactor AIMI/Chatterbox Logic into Garak (Python)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1178",
-          "summary": "[Summit] Chatterbox Security Testing via Garak (Backend Evaluation Flow)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-756",
-          "summary": "Bring your own Notebook - Reseach",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-713",
-          "summary": "Expose Kueue information via codeflare-sdk",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-665",
-          "summary": "Distributed Workloads Kueue Resources Best Practices",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-630",
-          "summary": "Introduce Feature Flags for RHOAI",
-          "points": 8
         }
       ],
       "points": 79,
       "capacity_status": "aggressive"
     },
-    "3.7-GA": {
+    "3.8-EA1": {
       "features": [
-        {
-          "key": "RHAISTRAT-1175-P1",
-          "summary": "KFTO/Kueue Migration Analysis Tool for 2.25 to 3.3 Upgrade... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1175-P2",
-          "summary": "KFTO/Kueue Migration Analysis Tool for 2.25 to 3.3 Upgrade... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1173",
-          "summary": "Introduce an AI Safety Starter Kit and Documentation",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1169",
-          "summary": "Enable RHOAI Operator to run on non-OpenShift Kubernetes clusters (xKS)",
-          "points": 8
-        },
         {
           "key": "RHAISTRAT-1168",
           "summary": "GPU-as-a-Service Observability",
@@ -91066,37 +91115,6 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-754",
-          "summary": "Epic: Advanced Scheduling and Resource Management for Distributed Workloads",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-711",
-          "summary": "Kubeflow MPI Operator",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-664",
-          "summary": "Ability to do banners in RHOAI dashboard",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-628",
-          "summary": "Include \"Resource Namespace\" on Serving runtimes tool tip",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-469",
-          "summary": "Improve UX of Project Overview ",
-          "points": 3
-        }
-      ],
-      "points": 80,
-      "capacity_status": "aggressive"
-    },
-    "3.8-EA1": {
-      "features": [
-        {
           "key": "RHAISTRAT-1146-P1",
           "summary": "Build & provide packages for agentic frameworks & evals on t... (Part 1: Core)",
           "points": 8
@@ -91116,6 +91134,32 @@
           "summary": "Builds and testing for different architectures for the RH AI... (Part 2: Extended)",
           "points": 5
         },
+        {
+          "key": "RHAISTRAT-756",
+          "summary": "Bring your own Notebook - Reseach",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-713",
+          "summary": "Expose Kueue information via codeflare-sdk",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-665",
+          "summary": "Distributed Workloads Kueue Resources Best Practices",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-630",
+          "summary": "Introduce Feature Flags for RHOAI",
+          "points": 8
+        }
+      ],
+      "points": 80,
+      "capacity_status": "aggressive"
+    },
+    "3.8-EA2": {
+      "features": [
         {
           "key": "RHAISTRAT-1144",
           "summary": "Enhanced MPIJob Performance Optimization with KFTv2",
@@ -91142,37 +91186,6 @@
           "points": 5
         },
         {
-          "key": "RHAISTRAT-749",
-          "summary": "Integrate TrustyAI-Llama Stack Safety, Guardrails & Evaluation ",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-710",
-          "summary": "End-to-End RAG with Feast Feature Store and Kubeflow Trainer",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-663",
-          "summary": "Migrate Kueue component to OpenShift Container Platform ",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-627",
-          "summary": "Migrate Katib SDK to Kubeflow Unified SDK",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-388",
-          "summary": "DW UI Improvements",
-          "points": 3
-        }
-      ],
-      "points": 80,
-      "capacity_status": "aggressive"
-    },
-    "3.8-EA2": {
-      "features": [
-        {
           "key": "RHAISTRAT-1122",
           "summary": "Add Garak eval provider to llama-stack distribution",
           "points": 5
@@ -91193,6 +91206,37 @@
           "points": 5
         },
         {
+          "key": "RHAISTRAT-754",
+          "summary": "Epic: Advanced Scheduling and Resource Management for Distributed Workloads",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-711",
+          "summary": "Kubeflow MPI Operator",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-664",
+          "summary": "Ability to do banners in RHOAI dashboard",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-628",
+          "summary": "Include \"Resource Namespace\" on Serving runtimes tool tip",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-589",
+          "summary": "[Phase 2] Bring Your Own Spark (BYOS) for Feature Transformations in Spark + RAG + Feast Pipelines",
+          "points": 5
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.8-GA": {
+      "features": [
+        {
           "key": "RHAISTRAT-1115-P1",
           "summary": "Feature Store & Workbenches Integration Phase 2: Dashboard D... (Part 1: Core)",
           "points": 8
@@ -91210,6 +91254,92 @@
         {
           "key": "RHAISTRAT-1091",
           "summary": "Support for different storage configurations per namespace in MLflow",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1089",
+          "summary": "Ray Train Training Progress Tracking for Distributed Workloads",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1085",
+          "summary": "(feat) Ability to select and configure retrieval algorithms and reranking techniques",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1083",
+          "summary": "RayJob submission using Predefined Runtime Configurations",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1082",
+          "summary": "Simplified RayJob Submission Using Predefined Runtime Configurations",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-749",
+          "summary": "Integrate TrustyAI-Llama Stack Safety, Guardrails & Evaluation ",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-710",
+          "summary": "End-to-End RAG with Feast Feature Store and Kubeflow Trainer",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-663",
+          "summary": "Migrate Kueue component to OpenShift Container Platform ",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-627",
+          "summary": "Migrate Katib SDK to Kubeflow Unified SDK",
+          "points": 5
+        }
+      ],
+      "points": 78,
+      "capacity_status": "aggressive"
+    },
+    "3.9-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1080-P1",
+          "summary": "MLflow integration in RHOAI TP - Cloned from RHAIRFE-993... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1080-P2",
+          "summary": "MLflow integration in RHOAI TP - Cloned from RHAIRFE-993... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1079",
+          "summary": "Agent-Based Data Generation Support in SDG Hub (via Langflow) - Cloned from RHAIRFE-1086",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1078",
+          "summary": "Granular RBAC Documentation for All Components",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1065",
+          "summary": "AI Pipelines: TTL configuration for pods",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1064-P1",
+          "summary": "[ODH Operator] Implement Modular Architecture for ODH Operat... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1064-P2",
+          "summary": "[ODH Operator] Implement Modular Architecture for ODH Operat... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1062",
+          "summary": "Modularization of its-hub codebase for multi-level deployment support - Cloned from RHAIRFE-1085",
           "points": 8
         },
         {
@@ -91238,50 +91368,50 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-564",
-          "summary": "Model Serving",
-          "points": 5
+          "key": "RHAISTRAT-573",
+          "summary": "Custom UI Branding",
+          "points": 3
         }
       ],
-      "points": 79,
+      "points": 80,
       "capacity_status": "aggressive"
     },
-    "3.8-GA": {
+    "3.9-EA2": {
       "features": [
         {
-          "key": "RHAISTRAT-1089",
-          "summary": "Ray Train Training Progress Tracking for Distributed Workloads",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1085",
-          "summary": "(feat) Ability to select and configure retrieval algorithms and reranking techniques",
+          "key": "RHAISTRAT-1059",
+          "summary": "Enable its-hub Interoperability with training-hub for Reinforcement Learning Sampling - Cloned from RHAIRFE-1080",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-1083",
-          "summary": "RayJob submission using Predefined Runtime Configurations",
+          "key": "RHAISTRAT-1058",
+          "summary": "Phase 2 - Enhance GitOps Repository for End-to-End OpenShift AI ",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-1082",
-          "summary": "Simplified RayJob Submission Using Predefined Runtime Configurations",
+          "key": "RHAISTRAT-1054",
+          "summary": "Tech-preview (readiness) for the responses API  - Cloned from RHAIRFE-1028",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-1080-P1",
-          "summary": "MLflow integration in RHOAI TP - Cloned from RHAIRFE-993... (Part 1: Core)",
+          "key": "RHAISTRAT-1053",
+          "summary": "Platform-based Model Checkpointing Support for Ray",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-1080-P2",
-          "summary": "MLflow integration in RHOAI TP - Cloned from RHAIRFE-993... (Part 2: Extended)",
-          "points": 5
+          "key": "RHAISTRAT-1051",
+          "summary": "[GA] Support NeMo Guardrails",
+          "points": 8
         },
         {
-          "key": "RHAISTRAT-1079",
-          "summary": "Agent-Based Data Generation Support in SDG Hub (via Langflow) - Cloned from RHAIRFE-1086",
+          "key": "RHAISTRAT-1047",
+          "summary": "Add fast builds of vLLM into RHOAI",
           "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1046",
+          "summary": "[GA] AI Playground - RHOAI AI Hub UI to compare, evaluate, and test w/ Available Models/MCP Servers",
+          "points": 3
         },
         {
           "key": "RHAISTRAT-746",
@@ -91309,97 +91439,11 @@
           "points": 3
         }
       ],
-      "points": 79,
+      "points": 80,
       "capacity_status": "aggressive"
     },
-    "3.9-EA1": {
+    "3.9-GA": {
       "features": [
-        {
-          "key": "RHAISTRAT-1078",
-          "summary": "Granular RBAC Documentation for All Components",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1065",
-          "summary": "AI Pipelines: TTL configuration for pods",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1064-P1",
-          "summary": "[ODH Operator] Implement Modular Architecture for ODH Operat... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1064-P2",
-          "summary": "[ODH Operator] Implement Modular Architecture for ODH Operat... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1062",
-          "summary": "Modularization of its-hub codebase for multi-level deployment support - Cloned from RHAIRFE-1085",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1059",
-          "summary": "Enable its-hub Interoperability with training-hub for Reinforcement Learning Sampling - Cloned from RHAIRFE-1080",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1058",
-          "summary": "Phase 2 - Enhance GitOps Repository for End-to-End OpenShift AI ",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-745",
-          "summary": "Implement proper authentication/authorization for Pipelines",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-702-P1",
-          "summary": "Establish a Unified Testing Framework for TrustyAI... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-659",
-          "summary": "KServe Modelcar - User Interface",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-601",
-          "summary": "Allow creating workbench enviroments from existing Secrets and Config Maps",
-          "points": 5
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.9-EA2": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1054",
-          "summary": "Tech-preview (readiness) for the responses API  - Cloned from RHAIRFE-1028",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1053",
-          "summary": "Platform-based Model Checkpointing Support for Ray",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1051",
-          "summary": "[GA] Support NeMo Guardrails",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1047",
-          "summary": "Add fast builds of vLLM into RHOAI",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1046",
-          "summary": "[GA] AI Playground - RHOAI AI Hub UI to compare, evaluate, and test w/ Available Models/MCP Servers",
-          "points": 3
-        },
         {
           "key": "RHAISTRAT-1043-P1",
           "summary": "(feat) Red Hat AI Evaluation Stack integration with Llama St... (Part 1: Core)",
@@ -91415,37 +91459,6 @@
           "summary": "K8s Controller for Evaluation Stack/eval-hub - Cloned from RHAIRFE-1020",
           "points": 5
         },
-        {
-          "key": "RHAISTRAT-744",
-          "summary": "CodeFlare SDK for KFTO PyTorch jobs",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-702-P2",
-          "summary": "Establish a Unified Testing Framework for TrustyAI... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-656",
-          "summary": "Lack of value and confusion from the KubeRay Dashboard during execution",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-622",
-          "summary": "Phase2 - E2E CI/CD Ecosystem across ODH & RHOAI - Branching & Auto-Sync Rethink",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-591",
-          "summary": "Custom notebooks UI enhancements - part 2",
-          "points": 3
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.9-GA": {
-      "features": [
         {
           "key": "RHAISTRAT-1041",
           "summary": "Support vLLM on CPU for RHOAI (Tech Preview)",
@@ -91477,6 +91490,27 @@
           "points": 5
         },
         {
+          "key": "RHAISTRAT-745",
+          "summary": "Implement proper authentication/authorization for Pipelines",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-702-P1",
+          "summary": "Establish a Unified Testing Framework for TrustyAI... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-659",
+          "summary": "KServe Modelcar - User Interface",
+          "points": 8
+        }
+      ],
+      "points": 78,
+      "capacity_status": "aggressive"
+    },
+    "3.10-EA1": {
+      "features": [
+        {
           "key": "RHAISTRAT-991",
           "summary": "test RFE to test updated cloning automation - Cloned from RHAIRFE-1043",
           "points": 5
@@ -91491,37 +91525,6 @@
           "summary": "Tuning Studio Backend using KFP, MLflow, and Kubeflow Trainer v2 - Cloned from RHAIRFE-924",
           "points": 5
         },
-        {
-          "key": "RHAISTRAT-739",
-          "summary": " LLM Compressor GA Workbench Images and Runtime Image for DSP - Support RHOAI Effort",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-699-P1",
-          "summary": "Index for the published Models on registry.redhat.io... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-655",
-          "summary": "Near Edge deployment within OpenShift AI ",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-619",
-          "summary": "Reserved Node Management",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-528",
-          "summary": "As an AI Engineer, I want to deploy a Llama Stack server playground application and share a URL that does not require a RHOAI account.",
-          "points": 3
-        }
-      ],
-      "points": 80,
-      "capacity_status": "aggressive"
-    },
-    "3.10-EA1": {
-      "features": [
         {
           "key": "RHAISTRAT-974",
           "summary": "Quality-Hardened Multilingual Flow + Knowledge Notebook (SDG Hub) - Cloned from RHAIRFE-775",
@@ -91553,6 +91556,37 @@
           "points": 5
         },
         {
+          "key": "RHAISTRAT-744",
+          "summary": "CodeFlare SDK for KFTO PyTorch jobs",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-702-P2",
+          "summary": "Establish a Unified Testing Framework for TrustyAI... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-656",
+          "summary": "Lack of value and confusion from the KubeRay Dashboard during execution",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-622",
+          "summary": "Phase2 - E2E CI/CD Ecosystem across ODH & RHOAI - Branching & Auto-Sync Rethink",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-588",
+          "summary": "Test data science project s3 datasource at RHOAI dashboard",
+          "points": 5
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.10-EA2": {
+      "features": [
+        {
           "key": "RHAISTRAT-969",
           "summary": "llm-d: Implement Remote KV Cache Offloading Backend ( Well lit path) - Cloned from RHAIRFE-1009",
           "points": 8
@@ -91562,37 +91596,6 @@
           "summary": "llm-d: Enable Multi Modal Input Support - (Audio, Vision) - Cloned from RHAIRFE-1008",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-738",
-          "summary": "Quota Management GUI",
-          "points": 3
-        },
-        {
-          "key": "RHAISTRAT-699-P2",
-          "summary": "Index for the published Models on registry.redhat.io... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-654",
-          "summary": "RHOAI name change - phase 2",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-617",
-          "summary": "Support INTEL Gaudi AI Accelerator as an integrated partner.",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-589",
-          "summary": "[Phase 2] Bring Your Own Spark (BYOS) for Feature Transformations in Spark + RAG + Feast Pipelines",
-          "points": 5
-        }
-      ],
-      "points": 78,
-      "capacity_status": "aggressive"
-    },
-    "3.10-EA2": {
-      "features": [
         {
           "key": "RHAISTRAT-966",
           "summary": "llm-d: Provide Distributed Inference with llm-d on xKS - Cloned from RHAIRFE-747",
@@ -91624,6 +91627,37 @@
           "points": 3
         },
         {
+          "key": "RHAISTRAT-739",
+          "summary": " LLM Compressor GA Workbench Images and Runtime Image for DSP - Support RHOAI Effort",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-699-P1",
+          "summary": "Index for the published Models on registry.redhat.io... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-655",
+          "summary": "Near Edge deployment within OpenShift AI ",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-619",
+          "summary": "Reserved Node Management",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-528",
+          "summary": "As an AI Engineer, I want to deploy a Llama Stack server playground application and share a URL that does not require a RHOAI account.",
+          "points": 3
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.10-GA": {
+      "features": [
+        {
           "key": "RHAISTRAT-949",
           "summary": "Support RHOAI on HCP on OCP Virt - Cloned from RHAIRFE-643",
           "points": 8
@@ -91633,32 +91667,6 @@
           "summary": "Dev Preview - Kubeflow Spark Operator included in rhods-oper... (Part 1: Core)",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-737",
-          "summary": "Support fractional GPUs - MIG",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-696",
-          "summary": "Instrument TrustyAI LM-Eval to Inform Decision Making",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-653",
-          "summary": "llm-d: Decouple llm-d vLLM image from the main RHAIIS product build vLLM image",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-588",
-          "summary": "Test data science project s3 datasource at RHOAI dashboard",
-          "points": 5
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.10-GA": {
-      "features": [
         {
           "key": "RHAISTRAT-948-P2",
           "summary": "Dev Preview - Kubeflow Spark Operator included in rhods-oper... (Part 2: Extended)",
@@ -91685,6 +91693,37 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-738",
+          "summary": "Quota Management GUI",
+          "points": 3
+        },
+        {
+          "key": "RHAISTRAT-699-P2",
+          "summary": "Index for the published Models on registry.redhat.io... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-654",
+          "summary": "RHOAI name change - phase 2",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-617",
+          "summary": "Support INTEL Gaudi AI Accelerator as an integrated partner.",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-602",
+          "summary": "Developer Hub templates for RHOAI",
+          "points": 8
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.11-EA1": {
+      "features": [
+        {
           "key": "RHAISTRAT-865",
           "summary": "Whisper Models Support",
           "points": 8
@@ -91699,32 +91738,6 @@
           "summary": "Local Execution Mode for Kubeflow Katib (optimizer)",
           "points": 5
         },
-        {
-          "key": "RHAISTRAT-734",
-          "summary": "Model Registry (for Summit)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-695",
-          "summary": "Ability to inject additional pip repositories configuration in the workbenches",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-652",
-          "summary": "Experiment Tracking for Generative & Predictive AI",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-616",
-          "summary": "Support RHOAI on ROSA HCP",
-          "points": 8
-        }
-      ],
-      "points": 78,
-      "capacity_status": "aggressive"
-    },
-    "3.11-EA1": {
-      "features": [
         {
           "key": "RHAISTRAT-856",
           "summary": "OOTB Storage solution for RHOAI customers",
@@ -91756,6 +91769,27 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-737",
+          "summary": "Support fractional GPUs - MIG",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-696",
+          "summary": "Instrument TrustyAI LM-Eval to Inform Decision Making",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-653",
+          "summary": "llm-d: Decouple llm-d vLLM image from the main RHAIIS product build vLLM image",
+          "points": 8
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.11-EA2": {
+      "features": [
+        {
           "key": "RHAISTRAT-847",
           "summary": "Migrate Kubeflow Trainer and Katib SDKs to unified SDK repo",
           "points": 5
@@ -91770,32 +91804,6 @@
           "summary": "llm-d: ARM Architecture Support for llm-d GH200 Readiness : ... (Part 1: Core)",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-730",
-          "summary": "MaaS Metric Exposure",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-693",
-          "summary": "Feature Description: AI Explainability in RHOAI",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-651",
-          "summary": "Support .nemo model format with Triton",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-615",
-          "summary": "Object Storage Browser for DS projects as part of Dashboard UI",
-          "points": 8
-        }
-      ],
-      "points": 79,
-      "capacity_status": "aggressive"
-    },
-    "3.11-EA2": {
-      "features": [
         {
           "key": "RHAISTRAT-845-P2",
           "summary": "llm-d: ARM Architecture Support for llm-d GH200 Readiness : ... (Part 2: Extended)",
@@ -91827,6 +91835,32 @@
           "points": 8
         },
         {
+          "key": "RHAISTRAT-734",
+          "summary": "Model Registry (for Summit)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-695",
+          "summary": "Ability to inject additional pip repositories configuration in the workbenches",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-652",
+          "summary": "Experiment Tracking for Generative & Predictive AI",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-616",
+          "summary": "Support RHOAI on ROSA HCP",
+          "points": 8
+        }
+      ],
+      "points": 79,
+      "capacity_status": "aggressive"
+    },
+    "3.11-GA": {
+      "features": [
+        {
           "key": "RHAISTRAT-832",
           "summary": "RAG Dev Preview in RHOAI 2.22",
           "points": 5
@@ -91836,37 +91870,6 @@
           "summary": "Introduce a Go SDK for UI BFF Integration... (Part 1: Core)",
           "points": 8
         },
-        {
-          "key": "RHAISTRAT-729",
-          "summary": "Post-training llamastack API for fine-tuning using iLab methodology ",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-692",
-          "summary": "Far edge deployments of OpenShift AI workloads",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-649",
-          "summary": "more detailed Eviction information and alerting",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-614",
-          "summary": "Allow the OpenShift AI admin to manage accelerator profiles",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-587-P2",
-          "summary": "Need a way to manage designated ODH-Connection/Secret of Mod... (Part 2: Extended)",
-          "points": 5
-        }
-      ],
-      "points": 78,
-      "capacity_status": "aggressive"
-    },
-    "3.11-GA": {
-      "features": [
         {
           "key": "RHAISTRAT-829-P2",
           "summary": "Introduce a Go SDK for UI BFF Integration... (Part 2: Extended)",
@@ -91903,6 +91906,32 @@
           "points": 5
         },
         {
+          "key": "RHAISTRAT-730",
+          "summary": "MaaS Metric Exposure",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-693",
+          "summary": "Feature Description: AI Explainability in RHOAI",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-651",
+          "summary": "Support .nemo model format with Triton",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-615",
+          "summary": "Object Storage Browser for DS projects as part of Dashboard UI",
+          "points": 8
+        }
+      ],
+      "points": 80,
+      "capacity_status": "aggressive"
+    },
+    "3.12-EA1": {
+      "features": [
+        {
           "key": "RHAISTRAT-816",
           "summary": "RHODS with Watsonx",
           "points": 5
@@ -91912,37 +91941,6 @@
           "summary": "\"Resource alerts\" collapsible view on Project Metrics tab",
           "points": 5
         },
-        {
-          "key": "RHAISTRAT-728",
-          "summary": "inject auth info of user from workbench or pipeline into ray cluster/codeflare sdk",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-691",
-          "summary": "Enable LLM compressor access in workbenches and pipelines",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-647",
-          "summary": "E2E CI/CD Ecosystem across ODH & RHOAI - Phase 3",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-612",
-          "summary": "FineTuning workflow using Kubeflow SDK/Trainer v2",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-474",
-          "summary": "Workload Metrics Table UI improvements",
-          "points": 3
-        }
-      ],
-      "points": 80,
-      "capacity_status": "aggressive"
-    },
-    "3.12-EA1": {
-      "features": [
         {
           "key": "RHAISTRAT-814",
           "summary": "Run.ai integrated partner solution - phase 1",
@@ -91979,41 +91977,36 @@
           "points": 8
         },
         {
-          "key": "RHAISTRAT-800",
-          "summary": "Public API MVP for workbench services",
+          "key": "RHAISTRAT-729",
+          "summary": "Post-training llamastack API for fine-tuning using iLab methodology ",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-727",
-          "summary": "Include IBM Watson.x LLM inference provider in llama stack distro",
+          "key": "RHAISTRAT-692",
+          "summary": "Far edge deployments of OpenShift AI workloads",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-690",
-          "summary": "DSP Enhanced Caching Management ",
-          "points": 8
+          "key": "RHAISTRAT-649",
+          "summary": "more detailed Eviction information and alerting",
+          "points": 5
         },
         {
-          "key": "RHAISTRAT-645",
-          "summary": "Custom notebooks UI enhancements - part 1",
-          "points": 3
-        },
-        {
-          "key": "RHAISTRAT-608",
-          "summary": "Do not restart Models deployed with ModelMesh during RHOAI upgrade",
-          "points": 3.0
-        },
-        {
-          "key": "RHAISTRAT-585-P2",
-          "summary": "llm-d: ARM Architecture Support for llm-d (GB200) Full Stack... (Part 2: Extended)",
+          "key": "RHAISTRAT-614",
+          "summary": "Allow the OpenShift AI admin to manage accelerator profiles",
           "points": 5
         }
       ],
-      "points": 79.0,
+      "points": 80,
       "capacity_status": "aggressive"
     },
     "3.12-EA2": {
       "features": [
+        {
+          "key": "RHAISTRAT-800",
+          "summary": "Public API MVP for workbench services",
+          "points": 8
+        },
         {
           "key": "RHAISTRAT-796",
           "summary": "IDE Kubeflow v2.0 Implementation",
@@ -92050,41 +92043,36 @@
           "points": 5
         },
         {
-          "key": "RHAISTRAT-776",
-          "summary": "E2E CI/CD Ecosystem across ODH & RHOAI - Phase 4",
+          "key": "RHAISTRAT-728",
+          "summary": "inject auth info of user from workbench or pipeline into ray cluster/codeflare sdk",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-691",
+          "summary": "Enable LLM compressor access in workbenches and pipelines",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-725",
-          "summary": "Having a proper display of which are the source images used for Workbenches",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-689",
-          "summary": "Multi-arch component builds follow on",
+          "key": "RHAISTRAT-647",
+          "summary": "E2E CI/CD Ecosystem across ODH & RHOAI - Phase 3",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-641",
-          "summary": "Enhanced Guardrail Detection and vLLM Emulation",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-605",
-          "summary": "Generalized Numeric Data Drift detection",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-584-P2",
-          "summary": "Kubeflow Integration... (Part 2: Extended)",
+          "key": "RHAISTRAT-612",
+          "summary": "FineTuning workflow using Kubeflow SDK/Trainer v2",
           "points": 5
         }
       ],
-      "points": 80,
+      "points": 78,
       "capacity_status": "aggressive"
     },
     "3.12-GA": {
       "features": [
+        {
+          "key": "RHAISTRAT-776",
+          "summary": "E2E CI/CD Ecosystem across ODH & RHOAI - Phase 4",
+          "points": 8
+        },
         {
           "key": "RHAISTRAT-775",
           "summary": "Document EUS policy and support tiers in life cycle page",
@@ -92116,37 +92104,37 @@
           "points": 5
         },
         {
-          "key": "RHAISTRAT-766",
-          "summary": "configure accelerator typ via CodeFlare SDK",
+          "key": "RHAISTRAT-727",
+          "summary": "Include IBM Watson.x LLM inference provider in llama stack distro",
           "points": 5
         },
         {
-          "key": "RHAISTRAT-765",
-          "summary": "llm-d: E2E encrytion : vllm to vllm Nixl communication encryption",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-724",
-          "summary": "IDE Release Automation",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-688",
-          "summary": "FlowYard: Build your Own Notebook",
+          "key": "RHAISTRAT-690",
+          "summary": "DSP Enhanced Caching Management ",
           "points": 8
         },
         {
-          "key": "RHAISTRAT-640",
-          "summary": "Backend support for KServe Raw",
-          "points": 8
+          "key": "RHAISTRAT-645",
+          "summary": "Custom notebooks UI enhancements - part 1",
+          "points": 3
         },
         {
-          "key": "RHAISTRAT-604",
-          "summary": "Foundational Observability for RHOAI - KServe + Cluster-view ",
+          "key": "RHAISTRAT-608",
+          "summary": "Do not restart Models deployed with ModelMesh during RHOAI upgrade",
+          "points": 3.0
+        },
+        {
+          "key": "RHAISTRAT-601",
+          "summary": "Allow creating workbench enviroments from existing Secrets and Config Maps",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-587-P2",
+          "summary": "Need a way to manage designated ODH-Connection/Secret of Mod... (Part 2: Extended)",
           "points": 5
         }
       ],
-      "points": 78,
+      "points": 79.0,
       "capacity_status": "aggressive"
     }
   },
