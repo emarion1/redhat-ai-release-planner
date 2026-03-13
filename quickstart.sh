@@ -1,10 +1,10 @@
 #!/bin/bash
-# Quick start script for RHOAI Release Manager
+# Quick start script for Red Hat AI Products Release Planner
 
 set -e
 
 echo "=========================================="
-echo "RHOAI Release Manager - Quick Start"
+echo "Red Hat AI Products Release Planner - Quick Start"
 echo "=========================================="
 echo ""
 

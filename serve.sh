@@ -4,7 +4,7 @@
 PORT="${1:-8000}"
 
 echo "=========================================="
-echo "RHOAI Release Manager - Local Server"
+echo "Red Hat AI Products Release Planner - Local Server"
 echo "=========================================="
 echo ""
 echo "Starting server on port $PORT..."

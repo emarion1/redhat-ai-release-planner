@@ -1,4 +1,4 @@
-# RHOAI Release Manager - Deployment Guide
+# Red Hat AI Products Release Planner - Deployment Guide
 
 This guide shows how to deploy the Release Manager tool for your team.
 
@@ -21,8 +21,8 @@ This guide shows how to deploy the Release Manager tool for your team.
    cd /path/to/artifacts
    git init
    git add .
-   git commit -m "Initial commit: RHOAI Release Manager"
-   git remote add origin https://github.com/emarion1/rhoai-release-manager.git
+   git commit -m "Initial commit: Red Hat AI Products Release Planner"
+   git remote add origin https://github.com/emarion1/redhat-ai-release-planner.git
    git push -u origin main
    ```
 
@@ -48,7 +48,7 @@ This guide shows how to deploy the Release Manager tool for your team.
 
 5. **Access your dashboard**
    ```
-   https://emarion1.github.io/rhoai-release-manager/release-manager.html
+   https://emarion1.github.io/redhat-ai-release-planner/release-manager.html
    ```
 
 **Auto-update schedule:**
@@ -118,8 +118,8 @@ This guide shows how to deploy the Release Manager tool for your team.
 
 2. **Build and run**
    ```bash
-   docker build -t rhoai-release-manager .
-   docker run -e JIRA_TOKEN='your-token' -v $(pwd):/app rhoai-release-manager
+   docker build -t redhat-ai-release-planner .
+   docker run -e JIRA_TOKEN='your-token' -v $(pwd):/app redhat-ai-release-planner
    ```
 
 3. **Serve with nginx**
@@ -218,7 +218,7 @@ This guide shows how to deploy the Release Manager tool for your team.
 1. Go to https://issues.redhat.com/secure/ViewProfile.jspa
 2. Click "Personal Access Tokens"
 3. Click "Create token"
-4. Name: "RHOAI Release Manager"
+4. Name: "Red Hat AI Products Release Planner"
 5. Expiration: 90 days
 6. Copy token immediately
 

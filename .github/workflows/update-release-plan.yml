@@ -10,16 +10,29 @@ on:
     paths:
       - 'release_manager.py'
       - 'auto_scheduler.py'
+      - 'fit_predictor_adapter.py'
+      - 'lib/release_fit_predictor/**'
 
 jobs:
   update-plan:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup SSH for private submodule
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SUBMODULE_DEPLOY_KEY }}
+
+      - name: Checkout submodules
+        run: git submodule update --init --recursive
+
+      - name: Update submodules
+        run: git submodule update --remote --merge
 
       - name: Set up Python
         uses: actions/setup-python@v5

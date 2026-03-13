@@ -1,4 +1,4 @@
-# RHOAI Release Manager - Development Guide
+# Red Hat AI Products Release Planner - Development Guide
 
 Guide for adding new functionality and customizing the Release Manager.
 
@@ -503,7 +503,7 @@ python3 release_manager.py
 
 # Verify output
 test -f release-manager.html || echo "FAIL: HTML not generated"
-grep -q "RHOAI Release Manager" release-manager.html || echo "FAIL: Missing title"
+grep -q "Red Hat AI Products Release Planner" release-manager.html || echo "FAIL: Missing title"
 grep -q "Draft Release Plans" release-manager.html || echo "FAIL: Missing tab"
 ```
 

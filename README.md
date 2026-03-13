@@ -1,8 +1,8 @@
-# RHOAI Release Manager
+# Red Hat AI Products Release Planner
 
-AI-powered release planning and tracking dashboard for Red Hat OpenShift AI (RHOAI).
+Multi-product release tracking and capacity planning for RHOAI, RHAIIS, and RHELAI.
 
-**[🔗 Live Dashboard](https://emarion1.github.io/rhoai-release-manager/release-manager.html)**
+**[🔗 Live Dashboard](https://emarion1.github.io/redhat-ai-release-planner/release-manager.html)**
 
 ## Features
 
@@ -16,10 +16,10 @@ AI-powered release planning and tracking dashboard for Red Hat OpenShift AI (RHO
 
 ### View the Dashboard
 
-No installation needed! Just visit the **[live dashboard](https://emarion1.github.io/rhoai-release-manager/release-manager.html)**.
+No installation needed! Just visit the **[live dashboard](https://emarion1.github.io/redhat-ai-release-planner/release-manager.html)**.
 
 ```
-https://emarion1.github.io/rhoai-release-manager/release-manager.html
+https://emarion1.github.io/redhat-ai-release-planner/release-manager.html
 ```
 
 The dashboard updates automatically every Monday at 8:00 AM UTC.
@@ -28,8 +28,8 @@ The dashboard updates automatically every Monday at 8:00 AM UTC.
 
 ```bash
 # Clone repository
-git clone https://github.com/emarion1/rhoai-release-manager.git
-cd rhoai-release-manager
+git clone https://github.com/emarion1/redhat-ai-release-planner.git
+cd redhat-ai-release-planner
 
 # Set your JIRA token
 export JIRA_TOKEN='your-personal-access-token'
@@ -166,7 +166,7 @@ Internal Red Hat tool - Not for external distribution
 
 ## Maintainers
 
-RHOAI Release Engineering Team
+Red Hat AI Release Engineering Team
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-RHOAI Release Management Tool
-Dual-mode: BUILD roadmaps + TRACK existing releases
+Red Hat AI Products Release Planner
+Multi-product release tracking and capacity planning for RHOAI, RHAIIS, and RHELAI
 
 Usage:
     export JIRA_TOKEN='your-token'
@@ -12,6 +12,7 @@ Opens release-manager.html in browser
 
 import json
 import os
+import re
 import sys
 import requests
 from datetime import datetime
@@ -28,6 +29,16 @@ except ImportError:
     def format_plan_summary(plan, schedule):
         return "Auto-scheduler not available"
 
+# Import fit predictor adapter (from Release_Fit_Predictor submodule)
+try:
+    from fit_predictor_adapter import (
+        load_capacity_model, capacity_model_to_legacy_format,
+        estimate_feature_size_enhanced, check_release_fit,
+    )
+    FIT_PREDICTOR_AVAILABLE = True
+except ImportError:
+    FIT_PREDICTOR_AVAILABLE = False
+
 # Configuration
 JIRA_BASE_URL = "https://issues.redhat.com"
 JIRA_TOKEN = os.environ.get("JIRA_TOKEN")
@@ -40,15 +51,21 @@ FIELD_STORY_POINTS = "customfield_12310243"
 FIELD_TARGET_VERSION = "customfield_12319940"
 FIELD_TARGET_END_DATE = "customfield_12313941"  # Target end date for planning
 
-# Capacity guidelines (from PREDICTIVE_RELEASE_CAPACITY_REPORT.md)
-CAPACITY = {
-    "median": 27.5,
-    "mean": 38.7,
-    "conservative_max": 30,
-    "typical_max": 50,
-    "aggressive_max": 80,
-    "historical_max_release": 140
-}
+# Capacity guidelines - loaded from fit predictor model when available,
+# otherwise falls back to hardcoded defaults from PREDICTIVE_RELEASE_CAPACITY_REPORT.md
+if FIT_PREDICTOR_AVAILABLE:
+    _capacity_model = load_capacity_model()
+    CAPACITY = capacity_model_to_legacy_format(_capacity_model)
+else:
+    _capacity_model = None
+    CAPACITY = {
+        "median": 27.5,
+        "mean": 38.7,
+        "conservative_max": 30,
+        "typical_max": 50,
+        "aggressive_max": 80,
+        "historical_max_release": 140,
+    }
 
 # Feature sizing (from FEATURE_SIZING_QUICK_REFERENCE.md)
 FEATURE_SIZING = {
@@ -165,7 +182,7 @@ def get_all_features():
             headers=get_jira_headers(),
             params={
                 "jql": jql,
-                "fields": f"key,summary,status,priority,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},labels,issuelinks",
+                "fields": f"key,summary,status,priority,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},labels,issuelinks,components,description",
                 "startAt": start_at,
                 "maxResults": max_results
             },
@@ -192,33 +209,52 @@ def get_all_features():
     return all_issues
 
 
-def estimate_feature_size(summary, priority):
+def estimate_feature_size(summary, priority, component_count=0, child_issue_count=0,
+                          description="", status=""):
     """
-    Auto-estimate feature size based on summary and priority
-    Returns story points (3, 5, 8, or 13)
+    Auto-estimate feature size based on summary and priority.
+    When the fit predictor adapter is available, uses data-driven complexity scoring
+    (0-12 scale trained on 571 features). Falls back to keyword heuristics otherwise.
+
+    Returns story points (3, 5, 8, or 13) for backward compatibility.
+    When fit predictor is available, also sets module-level _last_sizing_result
+    with detailed scoring metadata.
     """
+    global _last_sizing_result
+
+    if FIT_PREDICTOR_AVAILABLE:
+        result = estimate_feature_size_enhanced(
+            summary, priority,
+            component_count=component_count,
+            child_issue_count=child_issue_count,
+            description=description,
+            status=status,
+        )
+        _last_sizing_result = result
+        return result["points"]
+
+    # Keyword heuristic fallback
+    _last_sizing_result = None
     summary_lower = summary.lower()
 
-    # Keywords indicating size
     xl_keywords = ["infrastructure", "migration", "integration", "architecture", "redesign", "framework"]
     l_keywords = ["implement", "develop", "create", "build", "support", "enable"]
-    m_keywords = ["update", "enhance", "improve", "add", "extend"]
     s_keywords = ["fix", "adjust", "minor", "small", "ui", "ux", "docs"]
 
-    # Check for XL indicators
     if any(kw in summary_lower for kw in xl_keywords) or priority == "Blocker":
         return FEATURE_SIZING["XL"]  # 13
 
-    # Check for L indicators
     if any(kw in summary_lower for kw in l_keywords) or priority == "Critical":
         return FEATURE_SIZING["L"]  # 8
 
-    # Check for S indicators
     if any(kw in summary_lower for kw in s_keywords):
         return FEATURE_SIZING["S"]  # 3
 
-    # Default to Medium
     return FEATURE_SIZING["M"]  # 5
+
+
+# Module-level variable to hold detailed sizing result from last estimate_feature_size call
+_last_sizing_result = None
 
 
 def parse_features(issues, ranking):
@@ -266,14 +302,46 @@ def parse_features(issues, ranking):
         # Get labels
         labels = fields.get("labels", [])
 
+        # Extract component count and description for complexity scoring
+        components = fields.get("components", [])
+        component_count = len(components) if isinstance(components, list) else 0
+        description = fields.get("description") or ""
+        feature_status = fields["status"]["name"]
+
+        # Count child issues from issuelinks
+        child_issue_count = 0
+        for link in fields.get("issuelinks", []):
+            if link.get("type", {}).get("inward", "").lower() in ("is parent of", "is epic of"):
+                if "outwardIssue" in link:
+                    child_issue_count += 1
+            elif link.get("type", {}).get("outward", "").lower() in ("is parent of", "is epic of"):
+                if "outwardIssue" in link:
+                    child_issue_count += 1
+
         # Get story points - AUTO-SIZE if 0 or missing
         points = fields.get("customfield_12310243") or 0
         original_points = points
 
+        sizing_method = "jira_provided"
+        complexity_score = None
+        sizing_confidence = None
+
         if points == 0:
             priority = fields["priority"]["name"] if fields.get("priority") else "Normal"
-            points = estimate_feature_size(fields["summary"], priority)
+            points = estimate_feature_size(
+                fields["summary"], priority,
+                component_count=component_count,
+                child_issue_count=child_issue_count,
+                description=description,
+                status=feature_status,
+            )
             auto_sized_count += 1
+
+            # Capture detailed sizing metadata from adapter
+            if _last_sizing_result:
+                sizing_method = _last_sizing_result.get("method", "keyword_heuristic")
+                complexity_score = _last_sizing_result.get("complexity_score")
+                sizing_confidence = _last_sizing_result.get("confidence")
 
         # Check if feature is in the plan
         in_plan = key in ranking
@@ -282,7 +350,7 @@ def parse_features(issues, ranking):
         feature = {
             "key": key,
             "summary": fields["summary"],
-            "status": fields["status"]["name"],
+            "status": feature_status,
             "priority": fields["priority"]["name"] if fields.get("priority") else "Normal",
             "points": points,
             "original_points": original_points,
@@ -294,7 +362,11 @@ def parse_features(issues, ranking):
             "status_category": status_category,
             "labels": labels,
             "rank": rank,
-            "in_plan": in_plan  # NEW: Track if feature is in the plan
+            "in_plan": in_plan,
+            "component_count": component_count,
+            "sizing_method": sizing_method,
+            "complexity_score": complexity_score,
+            "sizing_confidence": sizing_confidence,
         }
 
         features.append(feature)
@@ -305,6 +377,18 @@ def parse_features(issues, ranking):
     print(f"  🤖 Auto-sized {auto_sized_count} features with missing story points")
 
     return features
+
+
+KNOWN_PRODUCTS = ["RHOAI", "RHAIIS", "RHELAI"]
+
+
+def _extract_product(scheduled_to):
+    """Extract product name from scheduled_to string."""
+    upper = scheduled_to.upper()
+    for product in KNOWN_PRODUCTS:
+        if upper.startswith(product):
+            return product
+    return "RHOAI"  # default
 
 
 def group_features_by_release(features):
@@ -325,19 +409,26 @@ def group_features_by_release(features):
             unscheduled.append(feature)
             continue
 
-        scheduled_lower = scheduled_to.lower().replace("rhoai-", "").replace("_", " ")
+        # Extract product and annotate feature
+        product = _extract_product(scheduled_to)
+        feature["product"] = product
+
+        # Strip all known product prefixes for event parsing
+        scheduled_lower = scheduled_to.lower().replace("_", " ")
+        for prefix in KNOWN_PRODUCTS:
+            scheduled_lower = scheduled_lower.replace(prefix.lower() + "-", "").replace(prefix.lower(), "")
 
         # Parse release version (e.g., "rhoai-3.4.EA1" -> release="3.4", event="EA1")
         # Handle formats like: "3.4", "3.4.EA1", "3.4-EA1", "3.4 EA1", "rhaiis-3.4 ea-1"
 
         # Extract version number (e.g., "3.4" or "2.20")
-        import re
         version_match = re.search(r'(\d+)\.(\d+)', scheduled_to)
 
         if version_match:
             major = version_match.group(1)
             minor = version_match.group(2)
             release_num = f"{major}.{minor}"
+            release_key = f"{product}-{release_num}"
 
             # Determine event type
             if "ea1" in scheduled_lower or "ea-1" in scheduled_lower:
@@ -350,7 +441,7 @@ def group_features_by_release(features):
                 # No event specified - put in Unspecified so it shows up
                 event = "Unspecified"
 
-            releases[release_num][event].append(feature)
+            releases[release_key][event].append(feature)
         else:
             # Couldn't parse version - add to unscheduled
             unscheduled.append(feature)
@@ -781,10 +872,33 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     else:
         recommended_plan_js = {}
 
+    # Compute release fit data per-event for the Release Fit tab
+    release_fit_data = {}
+    if FIT_PREDICTOR_AVAILABLE:
+        cap_model = load_capacity_model()
+        for release_key, release_data in releases.items():
+            release_fit_data[release_key] = {}
+            for event_name, event_features in release_data.items():
+                event_pts = sum(f["points"] for f in event_features)
+                if event_pts > 0:
+                    fit = check_release_fit(event_pts, cap_model)
+                    release_fit_data[release_key][event_name] = {
+                        "total_points": event_pts,
+                        "feature_count": len(event_features),
+                        **fit,
+                    }
+
+    # Sizing method distribution
+    sizing_stats = {"complexity_scoring": 0, "keyword_heuristic": 0, "jira_provided": 0, "total": len(features)}
+    for f in features:
+        method = f.get("sizing_method", "jira_provided")
+        if method in sizing_stats:
+            sizing_stats[method] += 1
+
     html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>RHOAI Release Manager</title>
+    <title>Red Hat AI Products Release Planner</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -1020,6 +1134,34 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             border: 2px solid #dee2e6;
             border-radius: 6px;
             cursor: pointer;
+        }}
+
+        .product-filters {{
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }}
+
+        .product-btn {{
+            padding: 6px 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }}
+
+        .product-btn:hover {{
+            border-color: #0052cc;
+            color: #0052cc;
+        }}
+
+        .product-btn.active {{
+            background: #0052cc;
+            color: white;
+            border-color: #0052cc;
         }}
 
         .metrics-grid {{
@@ -1279,14 +1421,15 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 </head>
 <body>
     <div class="header">
-        <h1>RHOAI Release Manager</h1>
-        <p>Build roadmaps and track release progress | Data from JIRA Plan: {PLAN_NAME}</p>
+        <h1>Red Hat AI Products Release Planner</h1>
+        <p>Multi-product release tracking and capacity planning | Data from JIRA Plan: {PLAN_NAME}</p>
     </div>
 
     <div class="tabs">
         <button class="tab-button active" onclick="switchTab('tracking')">📊 Track Current Release Cycles</button>
         <button class="tab-button" onclick="switchTab('drafts')">📝 Draft Release Plans</button>
         <button class="tab-button" onclick="switchTab('analysis')">🔬 Feature Analysis</button>
+        <button class="tab-button" onclick="switchTab('releasefit')">🎯 Release Fit</button>
         <button class="tab-button" onclick="showHelp()" style="margin-left:auto;background:#f8f9fa;color:#333;">❓ Help</button>
     </div>
 
@@ -1297,13 +1440,23 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <label for="release-select"><strong>Select Release Cycle to Track:</strong>
                     <span class="info-icon" onclick="showInfo('release-cycle')">ℹ️</span>
                 </label>
+                <div class="product-filters">
+"""
+
+    # Build product filter buttons dynamically
+    products_in_data = sorted(set(k.split("-")[0] for k in releases.keys()))
+    html += '                    <button class="product-btn active" onclick="filterProduct(\'ALL\')">ALL</button>\n'
+    for prod in products_in_data:
+        html += f'                    <button class="product-btn" onclick="filterProduct(\'{prod}\')">{prod}</button>\n'
+
+    html += """                </div>
                 <select id="release-select" onchange="loadRelease(this.value)">
                     <option value="">-- Select Release Cycle --</option>
 """
 
-    # Add existing releases to dropdown
-    for release_num in sorted(releases.keys(), reverse=True):
-        html += f'                    <option value="{release_num}">RHOAI-{release_num}</option>\n'
+    # Add existing releases to dropdown using composite keys
+    for release_key in sorted(releases.keys(), reverse=True):
+        html += f'                    <option value="{release_key}" data-product="{release_key.split("-")[0]}">{release_key}</option>\n'
 
     html += """
                 </select>
@@ -1393,11 +1546,30 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         </div>
     </div>
 
+    <!-- RELEASE FIT TAB -->
+    <div id="releasefit-tab" class="tab-content">
+        <div style="max-width: 1400px; margin: 0 auto;">
+            <div class="alert alert-info">
+                <strong>🎯 Release Fit Predictor</strong>
+                <p style="margin-top: 10px; font-size: 14px;">
+                    Data-driven release capacity analysis using a statistical model trained on
+                    571 features across 41 releases. Complexity scoring (0-12 scale) replaces
+                    simple keyword heuristics for more accurate auto-sizing.
+                </p>
+            </div>
+
+            <div id="releasefit-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // Store all data
         const allReleases = """ + json.dumps(releases, indent=2) + """;
         const releaseMetrics = """ + json.dumps(release_metrics, indent=2) + """;
         const capacity = """ + json.dumps(capacity, indent=2) + """;
+        const allProducts = """ + json.dumps(products_in_data, indent=2) + """;
         const recommendedPlan = """ + json.dumps(recommended_plan_js, indent=2) + """;
 
         // Backlog analysis data
@@ -1417,6 +1589,12 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 "split_count": optimized_plan["split_count"] if optimized_plan else 0
             }, indent=2) + """;
 
+        // Release Fit Predictor data
+        const capacityModel = """ + json.dumps(_capacity_model if _capacity_model else {}, indent=2) + """;
+        const releaseFitData = """ + json.dumps(release_fit_data, indent=2) + """;
+        const sizingStats = """ + json.dumps(sizing_stats, indent=2) + """;
+        const fitPredictorAvailable = """ + json.dumps(FIT_PREDICTOR_AVAILABLE) + """;
+
         // Feature lookup for quick access
         const featureElements = {};
 
@@ -1425,6 +1603,10 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             document.querySelectorAll('.feature-card').forEach(card => {
                 featureElements[card.dataset.key] = card;
             });
+            // Render release fit tab content
+            if (fitPredictorAvailable) {
+                renderReleaseFitTab();
+            }
         });
 
         // Tab switching
@@ -1436,21 +1618,47 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             document.getElementById(tab + '-tab').classList.add('active');
         }
 
+        // Product filtering for tracking tab
+        function filterProduct(product) {
+            // Toggle active button
+            document.querySelectorAll('.product-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show/hide dropdown options
+            const select = document.getElementById('release-select');
+            const options = select.querySelectorAll('option[data-product]');
+            options.forEach(opt => {
+                if (product === 'ALL' || opt.dataset.product === product) {
+                    opt.style.display = '';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+
+            // Reset selection and detail view
+            select.value = '';
+            document.getElementById('release-details').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>👆 Select a release cycle above</strong> to view tracking details for all 3 events (EA1, EA2, GA)
+                </div>
+            `;
+        }
+
         // Load release tracking details
-        function loadRelease(releaseNum) {
-            if (!releaseNum) {
+        function loadRelease(releaseKey) {
+            if (!releaseKey) {
                 document.getElementById('release-details').innerHTML = `
                     <div class="alert alert-info">Select a release above to view tracking details</div>
                 `;
                 return;
             }
 
-            const releaseData = allReleases[releaseNum];
-            const metrics = releaseMetrics[releaseNum];
+            const releaseData = allReleases[releaseKey];
+            const metrics = releaseMetrics[releaseKey];
 
             if (!releaseData) {
                 document.getElementById('release-details').innerHTML = `
-                    <div class="alert alert-warning">No data found for RHOAI-${releaseNum}</div>
+                    <div class="alert alert-warning">No data found for ${releaseKey}</div>
                 `;
                 return;
             }
@@ -1554,6 +1762,169 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             }
 
             document.getElementById('release-details').innerHTML = html;
+        }
+
+        // Release Fit tab rendering
+        function renderReleaseFitTab() {
+            const container = document.getElementById('releasefit-content');
+            if (!container) return;
+
+            let html = '';
+
+            // Capacity Model Summary
+            html += renderCapacityModelSummary();
+
+            // Sizing Method Distribution
+            html += renderSizingMethodDistribution();
+
+            // Per-release fit assessments
+            html += renderReleaseFitAssessments();
+
+            container.innerHTML = html;
+        }
+
+        function renderCapacityModelSummary() {
+            if (!capacityModel || !capacityModel.releases_analyzed) {
+                return '<div class="alert alert-warning">Capacity model not available. Ensure the Release Fit Predictor submodule is initialized.</div>';
+            }
+            const m = capacityModel;
+            return `
+                <div class="analysis-section" style="margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">📊 Capacity Model Summary</h3>
+                    <p style="color:#666;margin-bottom:15px;">Statistical model based on ${m.releases_analyzed} historical releases (${m.releases_in_ci} within ${m.confidence_level} confidence interval, ${m.outliers_removed} outliers removed)</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:15px;">
+                        <div class="metric-box" style="background:#e8f5e9;flex:1;min-width:140px;">
+                            <div class="metric-box-value" style="color:#2e7d32;">${m.median_points}</div>
+                            <div>Median pts/release</div>
+                        </div>
+                        <div class="metric-box" style="background:#e3f2fd;flex:1;min-width:140px;">
+                            <div class="metric-box-value" style="color:#1565c0;">${m.mean_points.toFixed(1)}</div>
+                            <div>Mean pts/release</div>
+                        </div>
+                        <div class="metric-box" style="background:#fff3e0;flex:1;min-width:140px;">
+                            <div class="metric-box-value" style="color:#e65100;">${m.std_dev.toFixed(1)}</div>
+                            <div>Std Deviation</div>
+                        </div>
+                        <div class="metric-box" style="background:#fce4ec;flex:1;min-width:140px;">
+                            <div class="metric-box-value" style="color:#c62828;">${m.min_points} - ${m.max_points}</div>
+                            <div>${m.confidence_level} CI Range</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSizingMethodDistribution() {
+            const s = sizingStats;
+            if (!s || s.total === 0) return '';
+            const pctComplexity = (s.complexity_scoring / s.total * 100).toFixed(1);
+            const pctKeyword = (s.keyword_heuristic / s.total * 100).toFixed(1);
+            const pctJira = (s.jira_provided / s.total * 100).toFixed(1);
+            return `
+                <div class="analysis-section" style="margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">📏 Sizing Method Distribution</h3>
+                    <p style="color:#666;margin-bottom:15px;">How features were sized across ${s.total} total features</p>
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:2px solid #ddd;text-align:left;">
+                                <th style="padding:8px;">Method</th>
+                                <th style="padding:8px;">Count</th>
+                                <th style="padding:8px;">Percentage</th>
+                                <th style="padding:8px;width:50%;">Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:8px;">🎯 JIRA-Provided</td>
+                                <td style="padding:8px;">${s.jira_provided}</td>
+                                <td style="padding:8px;">${pctJira}%</td>
+                                <td style="padding:8px;"><div style="background:#28a745;height:20px;border-radius:4px;width:${pctJira}%;min-width:2px;"></div></td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:8px;">🧠 Complexity Scoring</td>
+                                <td style="padding:8px;">${s.complexity_scoring}</td>
+                                <td style="padding:8px;">${pctComplexity}%</td>
+                                <td style="padding:8px;"><div style="background:#0052cc;height:20px;border-radius:4px;width:${pctComplexity}%;min-width:2px;"></div></td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:8px;">🔤 Keyword Heuristic</td>
+                                <td style="padding:8px;">${s.keyword_heuristic}</td>
+                                <td style="padding:8px;">${pctKeyword}%</td>
+                                <td style="padding:8px;"><div style="background:#fd7e14;height:20px;border-radius:4px;width:${pctKeyword}%;min-width:2px;"></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderReleaseFitAssessments() {
+            const releaseKeys = Object.keys(releaseFitData).sort();
+            if (releaseKeys.length === 0) return '<div class="alert alert-warning">No release fit data available.</div>';
+
+            // Group release keys by product
+            const byProduct = {};
+            for (const rk of releaseKeys) {
+                const product = rk.split('-')[0];
+                if (!byProduct[product]) byProduct[product] = [];
+                byProduct[product].push(rk);
+            }
+
+            const levelLabels = {
+                'EASILY_FITS': 'Easily Fits',
+                'FITS_WELL': 'Fits Well',
+                'FITS': 'Fits',
+                'TIGHT_FIT': 'Tight Fit',
+                'EXCEEDS_CAPACITY': 'Exceeds Capacity'
+            };
+
+            let html = '<div class="analysis-section"><h3 style="margin-bottom:15px;">🎯 Per-Event Fit Assessment</h3>';
+            html += '<p style="color:#666;margin-bottom:15px;">Each event (EA1, EA2, GA) is assessed independently against the capacity model\'s per-event median.</p>';
+
+            for (const product of Object.keys(byProduct).sort()) {
+                html += '<h4 style="margin:20px 0 12px;border-bottom:2px solid #dee2e6;padding-bottom:6px;">' + product + '</h4>';
+
+                for (const rk of byProduct[product]) {
+                    const events = releaseFitData[rk];
+                    const eventNames = Object.keys(events).sort((a,b) => {
+                        const order = {EA1:0, EA2:1, GA:2, Unspecified:3};
+                        return (order[a] ?? 4) - (order[b] ?? 4);
+                    });
+                    if (eventNames.length === 0) continue;
+
+                    html += '<h5 style="margin:12px 0 8px;color:#555;">' + rk + '</h5>';
+                    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:16px;">';
+
+                    for (const ev of eventNames) {
+                        const d = events[ev];
+                        const label = levelLabels[d.level] || d.level;
+                        const barPct = Math.min(d.pct_of_median, 200) / 2;
+
+                        html += `
+                            <div style="background:white;border:2px solid ${d.color};border-radius:8px;padding:14px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                    <h4 style="margin:0;font-size:15px;">${ev}</h4>
+                                    <span style="background:${d.color};color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">${label}</span>
+                                </div>
+                                <div style="margin-bottom:6px;">
+                                    <span style="font-size:22px;font-weight:700;">${d.total_points}</span>
+                                    <span style="color:#666;font-size:13px;"> pts across ${d.feature_count} features</span>
+                                </div>
+                                <div style="background:#eee;border-radius:4px;height:10px;margin-bottom:6px;">
+                                    <div style="background:${d.color};height:10px;border-radius:4px;width:${barPct}%;"></div>
+                                </div>
+                                <div style="font-size:11px;color:#666;">
+                                    ${d.pct_of_median}% of median |
+                                    ${d.remaining_to_typical > 0 ? d.remaining_to_typical + ' pts remaining' : Math.abs(d.remaining_to_typical) + ' pts over typical max'}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                }
+            }
+            html += '</div>';
+            return html;
         }
 
         // Help and info functions
@@ -2338,7 +2709,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     <div id="help-modal" class="modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeModal('help-modal')">&times;</span>
-            <h2>RHOAI Release Manager - Help Guide</h2>
+            <h2>Red Hat AI Products Release Planner - Help Guide</h2>
 
             <div class="info-card">
                 <h4>📊 Track Current Release Cycles</h4>
@@ -2435,7 +2806,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 def main():
     """Main execution"""
     print("=" * 70)
-    print("RHOAI Release Manager")
+    print("Red Hat AI Products Release Planner")
     print("=" * 70)
     print()
 
@@ -2470,10 +2841,10 @@ def main():
     print(f"     In plan: {unscheduled_in_plan}")
     print(f"     Not in plan: {unscheduled_not_in_plan}")
     print(f"   Scheduled releases: {len(releases)}")
-    for rel_num in sorted(releases.keys()):
-        rel_data = releases[rel_num]
+    for rel_key in sorted(releases.keys()):
+        rel_data = releases[rel_key]
         total = sum(len(rel_data[e]) for e in rel_data)
-        print(f"     RHOAI-{rel_num}: {total} features")
+        print(f"     {rel_key}: {total} features")
 
     # Show auto-sizing summary
     auto_sized = [f for f in features if f.get('auto_sized', False)]
