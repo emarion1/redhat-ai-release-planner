@@ -1426,10 +1426,10 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     </div>
 
     <div class="tabs">
-        <button class="tab-button active" onclick="switchTab('tracking')">📊 Track Current Release Cycles</button>
-        <button class="tab-button" onclick="switchTab('drafts')">📝 Draft Release Plans</button>
-        <button class="tab-button" onclick="switchTab('analysis')">🔬 Feature Analysis</button>
-        <button class="tab-button" onclick="switchTab('releasefit')">🎯 Release Fit</button>
+        <button class="tab-button active" onclick="switchTab('tracking', this)">📊 Track Current Release Cycles</button>
+        <button class="tab-button" onclick="switchTab('drafts', this)">📝 Draft Release Plans</button>
+        <button class="tab-button" onclick="switchTab('analysis', this)">🔬 Feature Analysis</button>
+        <button class="tab-button" onclick="switchTab('releasefit', this)">🎯 Release Fit</button>
         <button class="tab-button" onclick="showHelp()" style="margin-left:auto;background:#f8f9fa;color:#333;">❓ Help</button>
     </div>
 
@@ -1445,9 +1445,9 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
     # Build product filter buttons dynamically
     products_in_data = sorted(set(k.split("-")[0] for k in releases.keys()))
-    html += '                    <button class="product-btn active" onclick="filterProduct(\'ALL\')">ALL</button>\n'
+    html += '                    <button class="product-btn active" onclick="filterProduct(\'ALL\', this)">ALL</button>\n'
     for prod in products_in_data:
-        html += f'                    <button class="product-btn" onclick="filterProduct(\'{prod}\')">{prod}</button>\n'
+        html += f'                    <button class="product-btn" onclick="filterProduct(\'{prod}\', this)">{prod}</button>\n'
 
     html += """                </div>
                 <select id="release-select" onchange="loadRelease(this.value)">
@@ -1610,19 +1610,19 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         });
 
         // Tab switching
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            event.target.classList.add('active');
+            btn.classList.add('active');
             document.getElementById(tab + '-tab').classList.add('active');
         }
 
         // Product filtering for tracking tab
-        function filterProduct(product) {
+        function filterProduct(product, btn) {
             // Toggle active button
-            document.querySelectorAll('.product-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
             // Show/hide dropdown options
             const select = document.getElementById('release-select');
@@ -1666,9 +1666,9 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             // Calculate totals
             let totalFeatures = 0;
             let totalPoints = 0;
-            for (const event in releaseData) {
-                totalFeatures += metrics[event].features;
-                totalPoints += metrics[event].points;
+            for (const ev in metrics) {
+                totalFeatures += metrics[ev].features;
+                totalPoints += metrics[ev].points;
             }
 
             const vsHistorical = (totalPoints / capacity.historical_max_release * 100).toFixed(0);
@@ -1684,23 +1684,23 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                         <div class="metric-value">${totalPoints}</div>
                         <div class="metric-subtitle">${vsHistorical}% of historical max</div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-label">EA1</div>
-                        <div class="metric-value">${metrics.EA1.points}</div>
-                        <div class="metric-subtitle">${metrics.EA1.features} features (${metrics.EA1.vs_median_pct > 0 ? '+' : ''}${metrics.EA1.vs_median_pct}%)</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">EA2</div>
-                        <div class="metric-value">${metrics.EA2.points}</div>
-                        <div class="metric-subtitle">${metrics.EA2.features} features (${metrics.EA2.vs_median_pct > 0 ? '+' : ''}${metrics.EA2.vs_median_pct}%)</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">GA</div>
-                        <div class="metric-value">${metrics.GA.points}</div>
-                        <div class="metric-subtitle">${metrics.GA.features} features (${metrics.GA.vs_median_pct > 0 ? '+' : ''}${metrics.GA.vs_median_pct}%)</div>
-                    </div>
-                </div>
             `;
+
+            // Add per-event metric cards dynamically
+            for (const ev of ['EA1', 'EA2', 'GA', 'Unspecified']) {
+                if (metrics[ev] && metrics[ev].features > 0) {
+                    const pct = metrics[ev].vs_median_pct;
+                    html += `
+                    <div class="metric-card">
+                        <div class="metric-label">${ev}</div>
+                        <div class="metric-value">${metrics[ev].points}</div>
+                        <div class="metric-subtitle">${metrics[ev].features} features (${pct > 0 ? '+' : ''}${pct}%)</div>
+                    </div>
+                    `;
+                }
+            }
+
+            html += '</div>';
 
             // Add capacity warnings
             if (totalPoints > capacity.aggressive_max) {
@@ -1879,7 +1879,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             };
 
             let html = '<div class="analysis-section"><h3 style="margin-bottom:15px;">🎯 Per-Event Fit Assessment</h3>';
-            html += '<p style="color:#666;margin-bottom:15px;">Each event (EA1, EA2, GA) is assessed independently against the capacity model\'s per-event median.</p>';
+            html += '<p style="color:#666;margin-bottom:15px;">Each event (EA1, EA2, GA) is assessed independently against the per-event capacity median.</p>';
 
             for (const product of Object.keys(byProduct).sort()) {
                 html += '<h4 style="margin:20px 0 12px;border-bottom:2px solid #dee2e6;padding-bottom:6px;">' + product + '</h4>';
