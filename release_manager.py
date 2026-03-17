@@ -311,7 +311,22 @@ def parse_features(issues, ranking):
         # Extract component count and description for complexity scoring
         components = fields.get("components", [])
         component_count = len(components) if isinstance(components, list) else 0
-        description = fields.get("description") or ""
+        desc_raw = fields.get("description") or ""
+        # v3 API returns description as Atlassian Document Format (dict), extract plain text
+        if isinstance(desc_raw, dict):
+            def _extract_text(node):
+                if isinstance(node, str):
+                    return node
+                if isinstance(node, dict):
+                    if node.get("type") == "text":
+                        return node.get("text", "")
+                    return " ".join(_extract_text(c) for c in node.get("content", []))
+                if isinstance(node, list):
+                    return " ".join(_extract_text(c) for c in node)
+                return ""
+            description = _extract_text(desc_raw)
+        else:
+            description = str(desc_raw)
         feature_status = fields["status"]["name"]
 
         # Count child issues from issuelinks
