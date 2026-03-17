@@ -10,6 +10,7 @@ Usage:
 Opens release-manager.html in browser
 """
 
+import base64
 import json
 import os
 import re
@@ -40,16 +41,17 @@ except ImportError:
     FIT_PREDICTOR_AVAILABLE = False
 
 # Configuration
-JIRA_BASE_URL = "https://issues.redhat.com"
+JIRA_BASE_URL = "https://redhat.atlassian.net"
 JIRA_TOKEN = os.environ.get("JIRA_TOKEN")
+JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
 PROJECT = "RHAISTRAT"
 PLAN_NAME = "RHOAI Feature Planning and Tracking"
 PLAN_VIEW = "Outcomes & Features (Jeff's View)"
 
-# JIRA Custom Fields
-FIELD_STORY_POINTS = "customfield_12310243"
-FIELD_TARGET_VERSION = "customfield_12319940"
-FIELD_TARGET_END_DATE = "customfield_12313941"  # Target end date for planning
+# JIRA Custom Fields (Atlassian Cloud IDs)
+FIELD_STORY_POINTS = "customfield_10836"
+FIELD_TARGET_VERSION = "customfield_10855"
+FIELD_TARGET_END_DATE = "customfield_10015"  # Target end date for planning
 
 # Capacity guidelines - loaded from fit predictor model when available,
 # otherwise falls back to hardcoded defaults from PREDICTIVE_RELEASE_CAPACITY_REPORT.md
@@ -79,15 +81,17 @@ FEATURE_SIZING = {
 
 def get_jira_headers():
     """Get JIRA API headers"""
-    if not JIRA_TOKEN:
-        print("❌ ERROR: JIRA_TOKEN environment variable not set")
-        print("\nSet your JIRA Personal Access Token:")
-        print("  export JIRA_TOKEN='your-token-here'")
-        print("\nGet token from: https://issues.redhat.com/secure/ViewProfile.jspa")
+    if not JIRA_TOKEN or not JIRA_EMAIL:
+        print("❌ ERROR: JIRA_TOKEN and/or JIRA_EMAIL environment variable not set")
+        print("\nSet your Atlassian Cloud API token and email:")
+        print("  export JIRA_EMAIL='your-email@redhat.com'")
+        print("  export JIRA_TOKEN='your-api-token'")
+        print("\nGet API token from: https://id.atlassian.com/manage-profile/security/api-tokens")
         sys.exit(1)
 
+    credentials = base64.b64encode(f"{JIRA_EMAIL}:{JIRA_TOKEN}".encode()).decode()
     return {
-        "Authorization": f"Bearer {JIRA_TOKEN}",
+        "Authorization": f"Basic {credentials}",
         "Content-Type": "application/json"
     }
 
@@ -170,22 +174,25 @@ def get_all_features():
     """Get all RHAISTRAT features with status, points, versions"""
     print(f"📥 Querying all {PROJECT} features...")
 
-    jql = f"project = {PROJECT} AND type IN (Feature, Epic, Story)"
+    jql = f"project = {PROJECT} AND type IN (Feature, Initiative, Epic, Story)"
 
     all_issues = []
-    start_at = 0
     max_results = 100
+    next_page_token = None
 
     while True:
+        params = {
+            "jql": jql,
+            "fields": f"key,summary,status,priority,issuetype,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},labels,issuelinks,components,description",
+            "maxResults": max_results
+        }
+        if next_page_token:
+            params["nextPageToken"] = next_page_token
+
         response = requests.get(
-            f"{JIRA_BASE_URL}/rest/api/2/search",
+            f"{JIRA_BASE_URL}/rest/api/3/search/jql",
             headers=get_jira_headers(),
-            params={
-                "jql": jql,
-                "fields": f"key,summary,status,priority,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},labels,issuelinks,components,description",
-                "startAt": start_at,
-                "maxResults": max_results
-            },
+            params=params,
             timeout=30
         )
 
@@ -197,13 +204,12 @@ def get_all_features():
         issues = data.get("issues", [])
         all_issues.extend(issues)
 
-        total = data.get("total", 0)
-        start_at += max_results
+        print(f"  Retrieved {len(all_issues)} features so far...")
 
-        print(f"  Retrieved {len(all_issues)}/{total} features...")
-
-        if start_at >= total:
+        # Token-based pagination: stop when isLast or no nextPageToken
+        if data.get("isLast", True) or "nextPageToken" not in data:
             break
+        next_page_token = data["nextPageToken"]
 
     print(f"✅ Retrieved {len(all_issues)} total features")
     return all_issues
@@ -305,7 +311,22 @@ def parse_features(issues, ranking):
         # Extract component count and description for complexity scoring
         components = fields.get("components", [])
         component_count = len(components) if isinstance(components, list) else 0
-        description = fields.get("description") or ""
+        desc_raw = fields.get("description") or ""
+        # v3 API returns description as Atlassian Document Format (dict), extract plain text
+        if isinstance(desc_raw, dict):
+            def _extract_text(node):
+                if isinstance(node, str):
+                    return node
+                if isinstance(node, dict):
+                    if node.get("type") == "text":
+                        return node.get("text", "")
+                    return " ".join(_extract_text(c) for c in node.get("content", []))
+                if isinstance(node, list):
+                    return " ".join(_extract_text(c) for c in node)
+                return ""
+            description = _extract_text(desc_raw)
+        else:
+            description = str(desc_raw)
         feature_status = fields["status"]["name"]
 
         # Count child issues from issuelinks
@@ -319,7 +340,7 @@ def parse_features(issues, ranking):
                     child_issue_count += 1
 
         # Get story points - AUTO-SIZE if 0 or missing
-        points = fields.get("customfield_12310243") or 0
+        points = fields.get(FIELD_STORY_POINTS) or 0
         original_points = points
 
         sizing_method = "jira_provided"
@@ -347,11 +368,15 @@ def parse_features(issues, ranking):
         in_plan = key in ranking
         rank = ranking.get(key, 9999)  # Use plan ranking or default to end
 
+        # Get issue type
+        issue_type = fields.get("issuetype", {}).get("name", "Feature")
+
         feature = {
             "key": key,
             "summary": fields["summary"],
             "status": feature_status,
             "priority": fields["priority"]["name"] if fields.get("priority") else "Normal",
+            "issue_type": issue_type,
             "points": points,
             "original_points": original_points,
             "auto_sized": points != original_points,
@@ -397,7 +422,6 @@ def group_features_by_release(features):
         "EA1": [],
         "EA2": [],
         "GA": [],
-        "Unspecified": []  # Capitalized for display
     })
 
     unscheduled = []
@@ -406,6 +430,7 @@ def group_features_by_release(features):
         scheduled_to = feature["scheduled_to"]
 
         if not scheduled_to:
+            feature["product"] = "RHOAI"
             unscheduled.append(feature)
             continue
 
@@ -438,8 +463,8 @@ def group_features_by_release(features):
             elif "ga" in scheduled_lower:
                 event = "GA"
             else:
-                # No event specified - put in Unspecified so it shows up
-                event = "Unspecified"
+                # No event specified - default to GA
+                event = "GA"
 
             releases[release_key][event].append(feature)
         else:
@@ -1476,6 +1501,14 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     <!-- DRAFT PLANS TAB -->
     <div id="drafts-tab" class="tab-content">
         <div style="max-width: 1400px; margin: 0 auto;">
+            <div class="product-filters" id="drafts-product-filters">
+"""
+
+    html += '                <button class="product-btn active" onclick="filterDraftsProduct(\'ALL\', this)">ALL</button>\n'
+    for prod in products_in_data:
+        html += f'                <button class="product-btn" onclick="filterDraftsProduct(\'{prod}\', this)">{prod}</button>\n'
+
+    html += """            </div>
             <div class="alert alert-info">
                 <strong>📝 AI-Recommended 2-Year Release Plan</strong>
                 <span class="info-icon" onclick="showInfo('draft-plan')">ℹ️</span>
@@ -1496,6 +1529,14 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     <!-- FEATURE ANALYSIS TAB -->
     <div id="analysis-tab" class="tab-content">
         <div style="max-width: 1400px; margin: 0 auto;">
+            <div class="product-filters" id="analysis-product-filters">
+"""
+
+    html += '                <button class="product-btn active" onclick="filterAnalysisProduct(\'ALL\', this)">ALL</button>\n'
+    for prod in products_in_data:
+        html += f'                <button class="product-btn" onclick="filterAnalysisProduct(\'{prod}\', this)">{prod}</button>\n'
+
+    html += """            </div>
             <div class="alert alert-info">
                 <strong>🔬 Feature Backlog Analysis & Optimization</strong>
                 <span class="info-icon" onclick="showInfo('analysis')">ℹ️</span>
@@ -1549,6 +1590,14 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     <!-- RELEASE FIT TAB -->
     <div id="releasefit-tab" class="tab-content">
         <div style="max-width: 1400px; margin: 0 auto;">
+            <div class="product-filters" id="fit-product-filters">
+"""
+
+    html += '                <button class="product-btn active" onclick="filterFitProduct(\'ALL\', this)">ALL</button>\n'
+    for prod in products_in_data:
+        html += f'                <button class="product-btn" onclick="filterFitProduct(\'{prod}\', this)">{prod}</button>\n'
+
+    html += """            </div>
             <div class="alert alert-info">
                 <strong>🎯 Release Fit Predictor</strong>
                 <p style="margin-top: 10px; font-size: 14px;">
@@ -1566,6 +1615,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
     <script>
         // Store all data
+        const jiraBaseUrl = """ + json.dumps(JIRA_BASE_URL) + """;
         const allReleases = """ + json.dumps(releases, indent=2) + """;
         const releaseMetrics = """ + json.dumps(release_metrics, indent=2) + """;
         const capacity = """ + json.dumps(capacity, indent=2) + """;
@@ -1576,7 +1626,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         const backlogAnalysis = """ + json.dumps(backlog_analysis if backlog_analysis else {}, indent=2) + """;
 
         // Full feature lookup for getting names and details
-        const allFeatures = """ + json.dumps({f["key"]: {"summary": f["summary"], "points": f["points"]} for f in features}, indent=2) + """;
+        const allFeatures = """ + json.dumps({f["key"]: {"summary": f["summary"], "points": f["points"], "product": f.get("product", "RHOAI"), "issue_type": f.get("issue_type", "Feature")} for f in features}, indent=2) + """;
 
         // Optimized plan data with full feature info
         const optimizedPlanData = """ + json.dumps(
@@ -1594,6 +1644,11 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         const releaseFitData = """ + json.dumps(release_fit_data, indent=2) + """;
         const sizingStats = """ + json.dumps(sizing_stats, indent=2) + """;
         const fitPredictorAvailable = """ + json.dumps(FIT_PREDICTOR_AVAILABLE) + """;
+
+        // Product filter state
+        let currentDraftsProduct = 'ALL';
+        let currentAnalysisProduct = 'ALL';
+        let currentFitProduct = 'ALL';
 
         // Feature lookup for quick access
         const featureElements = {};
@@ -1644,6 +1699,30 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             `;
         }
 
+        // Product filtering for drafts tab
+        function filterDraftsProduct(product, btn) {
+            document.querySelectorAll('#drafts-product-filters .product-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentDraftsProduct = product;
+            renderDraftPlan();
+        }
+
+        // Product filtering for analysis tab
+        function filterAnalysisProduct(product, btn) {
+            document.querySelectorAll('#analysis-product-filters .product-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentAnalysisProduct = product;
+            renderAnalysis();
+        }
+
+        // Product filtering for release fit tab
+        function filterFitProduct(product, btn) {
+            document.querySelectorAll('#fit-product-filters .product-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFitProduct = product;
+            renderReleaseFitTab();
+        }
+
         // Load release tracking details
         function loadRelease(releaseKey) {
             if (!releaseKey) {
@@ -1687,7 +1766,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             `;
 
             // Add per-event metric cards dynamically
-            for (const ev of ['EA1', 'EA2', 'GA', 'Unspecified']) {
+            for (const ev of ['EA1', 'EA2', 'GA']) {
                 if (metrics[ev] && metrics[ev].features > 0) {
                     const pct = metrics[ev].vs_median_pct;
                     html += `
@@ -1719,8 +1798,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 `;
             }
 
-            // Show features by event (including Unspecified for features without specific event)
-            for (const event of ['EA1', 'EA2', 'GA', 'Unspecified']) {
+            for (const event of ['EA1', 'EA2', 'GA']) {
                 const features = releaseData[event];
                 if (features && features.length > 0) {
                     html += `
@@ -1742,9 +1820,12 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                     features.forEach(f => {
                         const statusClass = 'status-' + f.status.toLowerCase().replace(/[^a-z]/g, '');
                         const priorityClass = 'priority-' + f.priority.toLowerCase();
+                        const typeBadge = f.issue_type === 'Initiative'
+                            ? '<span style="display:inline-block;font-size:11px;padding:1px 6px;border-radius:3px;background:#e3fcef;color:#006644;margin-left:6px;">Initiative</span>'
+                            : '<span style="display:inline-block;font-size:11px;padding:1px 6px;border-radius:3px;background:#deebff;color:#0747a6;margin-left:6px;">Feature</span>';
                         html += `
                                     <tr>
-                                        <td><a href="https://issues.redhat.com/browse/${f.key}" target="_blank">${f.key}</a></td>
+                                        <td><a href="${jiraBaseUrl}/browse/${f.key}" target="_blank">${f.key}</a>${typeBadge}</td>
                                         <td>${f.summary}</td>
                                         <td><span class="status-badge ${statusClass}">${f.status}</span></td>
                                         <td class="${priorityClass}">${f.priority}</td>
@@ -1882,12 +1963,13 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             html += '<p style="color:#666;margin-bottom:15px;">Each event (EA1, EA2, GA) is assessed independently against the per-event capacity median.</p>';
 
             for (const product of Object.keys(byProduct).sort()) {
+                if (currentFitProduct !== 'ALL' && product !== currentFitProduct) continue;
                 html += '<h4 style="margin:20px 0 12px;border-bottom:2px solid #dee2e6;padding-bottom:6px;">' + product + '</h4>';
 
                 for (const rk of byProduct[product]) {
                     const events = releaseFitData[rk];
                     const eventNames = Object.keys(events).sort((a,b) => {
-                        const order = {EA1:0, EA2:1, GA:2, Unspecified:3};
+                        const order = {EA1:0, EA2:1, GA:2};
                         return (order[a] ?? 4) - (order[b] ?? 4);
                     });
                     if (eventNames.length === 0) continue;
@@ -1951,8 +2033,8 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                         <p><strong>Target Version:</strong> Feature is <em>intended</em> for this release event but not yet committed</p>
                     </div>
                     <div class="info-card">
-                        <h4>Unspecified Events</h4>
-                        <p>Features with only a version number (e.g., "3.5") but no specific event (EA1/EA2/GA) appear in the "Unspecified" section.</p>
+                        <h4>Default to GA</h4>
+                        <p>Features with only a version number (e.g., "3.5") but no specific event (EA1/EA2) default to the GA release event.</p>
                     </div>
                 `,
                 'capacity': `
@@ -2074,6 +2156,27 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                     releases[version] = { EA1: null, EA2: null, GA: null };
                 }
                 releases[version][event] = recommendedPlan[bucketKey];
+            }
+
+            // Apply product filter
+            if (currentDraftsProduct !== 'ALL') {
+                for (const version in releases) {
+                    for (const event in releases[version]) {
+                        if (releases[version][event]) {
+                            const orig = releases[version][event];
+                            const filtered = orig.features.filter(key => {
+                                const f = allFeatures[key];
+                                return f && f.product === currentDraftsProduct;
+                            });
+                            const pts = filtered.reduce((s, key) => s + (allFeatures[key] ? allFeatures[key].points : 0), 0);
+                            releases[version][event] = {
+                                features: filtered,
+                                points: pts,
+                                capacity_status: pts <= 30 ? 'conservative' : pts <= 50 ? 'typical' : pts <= 80 ? 'aggressive' : 'over_capacity'
+                            };
+                        }
+                    }
+                }
             }
 
             let html = '';
@@ -2258,22 +2361,33 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         // Render Phasing Analysis section
         function renderPhasingAnalysis() {
             const container = document.getElementById('analysis-phasing');
-            const phasing = backlogAnalysis.insights.phasing;
+
+            // Filter phasing results by product
+            let results = backlogAnalysis.phasing_results || [];
+            if (currentAnalysisProduct !== 'ALL') {
+                results = results.filter(r => {
+                    const f = allFeatures[r.feature.key];
+                    return f && f.product === currentAnalysisProduct;
+                });
+            }
+            const total = results.length;
+            const phaseableCount = results.filter(r => r.analysis.phaseable).length;
+            const percentage = total > 0 ? Math.round(phaseableCount / total * 100) : 0;
 
             let html = `
                 <h2 style="margin: 0 0 20px 0; color: #333;">DP/TP/GA Phasing Analysis</h2>
 
                 <div style="margin: 20px 0;">
                     <div class="metric-box" style="background: #e7f3ff;">
-                        <div class="metric-box-value" style="color: #0052cc;">${phasing.total}</div>
+                        <div class="metric-box-value" style="color: #0052cc;">${total}</div>
                         <div class="metric-box-label">Total Features</div>
                     </div>
                     <div class="metric-box" style="background: #f0fff4;">
-                        <div class="metric-box-value" style="color: #28a745;">${phasing.phaseable}</div>
+                        <div class="metric-box-value" style="color: #28a745;">${phaseableCount}</div>
                         <div class="metric-box-label">Phaseable Features</div>
                     </div>
                     <div class="metric-box" style="background: #fff8e6;">
-                        <div class="metric-box-value" style="color: #ff8b00;">${phasing.percentage}%</div>
+                        <div class="metric-box-value" style="color: #ff8b00;">${percentage}%</div>
                         <div class="metric-box-label">Phasing Potential</div>
                     </div>
                 </div>
@@ -2281,7 +2395,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3 style="margin: 0 0 15px 0; color: #555; font-size: 16px;">What This Means</h3>
                     <p style="margin: 0; line-height: 1.6; color: #666;">
-                        <strong>${phasing.phaseable}</strong> features (${phasing.percentage}%) are large or complex enough to benefit from phased delivery across DP → TP → GA.
+                        <strong>${phaseableCount}</strong> features (${percentage}%) are large or complex enough to benefit from phased delivery across DP → TP → GA.
                         This allows for:
                         <br>• Earlier customer feedback with Dev Preview (DP)
                         <br>• Iterative refinement in Tech Preview (TP)
@@ -2294,7 +2408,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             `;
 
             // Show sample of phaseable features
-            const phaseableFeatures = backlogAnalysis.phasing_results
+            const phaseableFeatures = results
                 .filter(r => r.analysis.phaseable)
                 .slice(0, 20);  // Show first 20
 
@@ -2315,8 +2429,8 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 `;
             });
 
-            if (phaseableFeatures.length < backlogAnalysis.phasing_results.filter(r => r.analysis.phaseable).length) {
-                const remaining = backlogAnalysis.phasing_results.filter(r => r.analysis.phaseable).length - phaseableFeatures.length;
+            if (phaseableFeatures.length < phaseableCount) {
+                const remaining = phaseableCount - phaseableFeatures.length;
                 html += `<p style="margin: 15px 0; color: #666; font-style: italic;">...and ${remaining} more phaseable features</p>`;
             }
 
@@ -2328,23 +2442,49 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         // Render Sizing Analysis section
         function renderSizingAnalysis() {
             const container = document.getElementById('analysis-sizing');
-            const sizing = backlogAnalysis.sizing_analysis;
-            const dist = sizing.distribution;
+
+            // Compute sizing from filtered features
+            let featureKeys = Object.keys(allFeatures);
+            if (currentAnalysisProduct !== 'ALL') {
+                featureKeys = featureKeys.filter(k => allFeatures[k].product === currentAnalysisProduct);
+            }
+            const totalFeatures = featureKeys.length;
+            const totalPts = featureKeys.reduce((s, k) => s + allFeatures[k].points, 0);
+            const avgSize = totalFeatures > 0 ? (totalPts / totalFeatures).toFixed(1) : 0;
+
+            const dist = { XL: {count:0, total_points:0, percentage:0}, L: {count:0, total_points:0, percentage:0}, M: {count:0, total_points:0, percentage:0}, S: {count:0, total_points:0, percentage:0}, XS: {count:0, total_points:0, percentage:0} };
+            featureKeys.forEach(k => {
+                const pts = allFeatures[k].points;
+                const size = pts >= 13 ? 'XL' : pts >= 8 ? 'L' : pts >= 5 ? 'M' : pts >= 3 ? 'S' : 'XS';
+                dist[size].count++;
+                dist[size].total_points += pts;
+            });
+            for (const size in dist) {
+                dist[size].percentage = totalFeatures > 0 ? Math.round(dist[size].count / totalFeatures * 100) : 0;
+            }
+
+            // Compute efficiency score
+            const weights = { XS: 60, S: 100, M: 90, L: 70, XL: 40 };
+            let effScore = 0;
+            for (const size in dist) {
+                effScore += (dist[size].percentage / 100) * weights[size];
+            }
+            effScore = Math.round(effScore);
 
             let html = `
                 <h2 style="margin: 0 0 20px 0; color: #333;">Feature Sizing Distribution</h2>
 
                 <div style="margin: 20px 0;">
                     <div class="metric-box" style="background: #e7f3ff;">
-                        <div class="metric-box-value" style="color: #0052cc;">${sizing.total_features}</div>
+                        <div class="metric-box-value" style="color: #0052cc;">${totalFeatures}</div>
                         <div class="metric-box-label">Total Features</div>
                     </div>
                     <div class="metric-box" style="background: #fff8e6;">
-                        <div class="metric-box-value" style="color: #ff8b00;">${sizing.average_size}</div>
+                        <div class="metric-box-value" style="color: #ff8b00;">${avgSize}</div>
                         <div class="metric-box-label">Average Size (pts)</div>
                     </div>
                     <div class="metric-box" style="background: #f0fff4;">
-                        <div class="metric-box-value" style="color: #28a745;">${backlogAnalysis.insights.efficiency_score}</div>
+                        <div class="metric-box-value" style="color: #28a745;">${effScore}</div>
                         <div class="metric-box-label">Efficiency Score</div>
                     </div>
                 </div>
@@ -2431,7 +2571,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <h2 style="margin: 0 0 20px 0; color: #333;">Optimization Recommendations</h2>
             `;
 
-            // Show sizing recommendations
+            // Show sizing recommendations (general messages, always shown)
             sizing.recommendations.forEach(rec => {
                 const className = rec.impact === 'high' ? 'recommendation-high' :
                                 rec.impact === 'medium' ? 'recommendation-medium' :
@@ -2449,17 +2589,24 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 `;
             });
 
-            // Show oversized features that should be split
-            if (sizing.oversized && sizing.oversized.length > 0) {
+            // Show oversized features that should be split (filtered by product)
+            let oversizedItems = sizing.oversized || [];
+            if (currentAnalysisProduct !== 'ALL') {
+                oversizedItems = oversizedItems.filter(item => {
+                    const f = allFeatures[item.feature.key];
+                    return f && f.product === currentAnalysisProduct;
+                });
+            }
+            if (oversizedItems.length > 0) {
                 html += `
                     <h3 style="margin: 30px 0 15px 0; color: #333;">Features Recommended for Splitting</h3>
                     <p style="color: #666; margin-bottom: 15px;">
-                        The following ${sizing.oversized.length} features are large (XL) and contain multiple concerns.
+                        The following ${oversizedItems.length} features are large (XL) and contain multiple concerns.
                         Consider splitting them into smaller, more focused features for faster delivery.
                     </p>
                 `;
 
-                sizing.oversized.forEach(item => {
+                oversizedItems.forEach(item => {
                     const f = item.feature;
                     html += `
                         <div style="padding: 15px; margin: 10px 0; background: #fff8e6; border-left: 4px solid #ff8b00; border-radius: 4px;">
@@ -2558,6 +2705,27 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                     releases[version] = { EA1: null, EA2: null, GA: null };
                 }
                 releases[version][event] = optimizedPlanData.plan[bucketKey];
+            }
+
+            // Apply product filter
+            if (currentAnalysisProduct !== 'ALL') {
+                for (const version in releases) {
+                    for (const event in releases[version]) {
+                        if (releases[version][event]) {
+                            const orig = releases[version][event];
+                            const filtered = orig.features.filter(feature => {
+                                const f = allFeatures[feature.key];
+                                return f && f.product === currentAnalysisProduct;
+                            });
+                            const pts = filtered.reduce((s, feature) => s + feature.points, 0);
+                            releases[version][event] = {
+                                features: filtered,
+                                points: pts,
+                                capacity_status: pts <= 30 ? 'conservative' : pts <= 50 ? 'typical' : pts <= 80 ? 'aggressive' : 'over_capacity'
+                            };
+                        }
+                    }
+                }
             }
 
             const sortedVersions = Object.keys(releases)
@@ -2716,7 +2884,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <p>Monitor progress on scheduled releases (3.4, 3.5, etc.)</p>
                 <ul>
                     <li>Select a release cycle from the dropdown</li>
-                    <li>View all 3 events: EA1, EA2, GA (plus Unspecified)</li>
+                    <li>View all 3 events: EA1, EA2, GA</li>
                     <li>See metrics: feature count, story points, capacity status</li>
                     <li>Review feature lists with status and priority</li>
                 </ul>

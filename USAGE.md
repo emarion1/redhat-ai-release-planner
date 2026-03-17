@@ -57,12 +57,14 @@ git clone https://github.com/emarion1/redhat-ai-release-planner.git
 cd redhat-ai-release-planner
 
 # Quick start (generates and opens dashboard)
-export JIRA_TOKEN='your-token'
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 ./quickstart.sh
 
 # Or manual steps:
 pip install -r requirements.txt
-export JIRA_TOKEN='your-token'
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 python3 release_manager.py
 
 # View locally
@@ -70,12 +72,13 @@ python3 release_manager.py
 # Open: http://localhost:8000/release-manager.html
 ```
 
-### Get JIRA Token
+### Get JIRA Credentials
 
-1. Visit: https://issues.redhat.com/secure/ViewProfile.jspa
-2. Click "Personal Access Tokens"
-3. Create token (90-day expiration recommended)
-4. Copy token immediately
+1. Visit: https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Name it (e.g., "Release Planner")
+4. Copy the token immediately
+5. Set `JIRA_EMAIL` to your Atlassian account email
 
 ---
 

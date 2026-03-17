@@ -31,8 +31,9 @@ The dashboard updates automatically every Monday at 8:00 AM UTC.
 git clone https://github.com/emarion1/redhat-ai-release-planner.git
 cd redhat-ai-release-planner
 
-# Set your JIRA token
-export JIRA_TOKEN='your-personal-access-token'
+# Set your Atlassian Cloud credentials
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 
 # Quick start (generates and serves dashboard)
 ./quickstart.sh
@@ -40,12 +41,13 @@ export JIRA_TOKEN='your-personal-access-token'
 
 Open http://localhost:8000/release-manager.html in your browser.
 
-### Get JIRA Token
+### Get JIRA Credentials
 
-1. Visit https://issues.redhat.com/secure/ViewProfile.jspa
-2. Click "Personal Access Tokens"
-3. Create a new token (90-day expiration recommended)
+1. Visit https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Name it (e.g., "Release Planner")
 4. Copy the token immediately
+5. Set `JIRA_EMAIL` to your Atlassian account email (e.g., `your-email@redhat.com`)
 
 ## Documentation
 
