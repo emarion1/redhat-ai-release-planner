@@ -26,11 +26,13 @@ This guide shows how to deploy the Release Manager tool for your team.
    git push -u origin main
    ```
 
-2. **Add JIRA Token as Secret**
+2. **Add JIRA Secrets**
    - Go to repo **Settings** → **Secrets and variables** → **Actions**
    - Click **New repository secret**
-   - Name: `JIRA_TOKEN`
-   - Value: Your JIRA Personal Access Token
+   - Name: `JIRA_TOKEN`, Value: Your Atlassian Cloud API token
+   - Click **Add secret**
+   - Click **New repository secret** again
+   - Name: `JIRA_EMAIL`, Value: Your Atlassian account email
    - Click **Add secret**
 
 3. **Enable GitHub Pages**
@@ -68,7 +70,8 @@ This guide shows how to deploy the Release Manager tool for your team.
 
 1. **Generate HTML locally**
    ```bash
-   export JIRA_TOKEN='your-token'
+   export JIRA_EMAIL='your-email@redhat.com'
+   export JIRA_TOKEN='your-api-token'
    python3 release_manager.py
    ```
 
@@ -88,7 +91,7 @@ This guide shows how to deploy the Release Manager tool for your team.
 3. **Set up cron for updates** (optional)
    ```bash
    # Add to crontab
-   0 8 * * 1 cd /path/to/repo && export JIRA_TOKEN='xxx' && python3 release_manager.py && scp release-manager.html user@server:/var/www/html/
+   0 8 * * 1 cd /path/to/repo && export JIRA_EMAIL='xxx' JIRA_TOKEN='xxx' && python3 release_manager.py && scp release-manager.html user@server:/var/www/html/
    ```
 
 ---
@@ -119,7 +122,7 @@ This guide shows how to deploy the Release Manager tool for your team.
 2. **Build and run**
    ```bash
    docker build -t redhat-ai-release-planner .
-   docker run -e JIRA_TOKEN='your-token' -v $(pwd):/app redhat-ai-release-planner
+   docker run -e JIRA_EMAIL='your-email@redhat.com' -e JIRA_TOKEN='your-api-token' -v $(pwd):/app redhat-ai-release-planner
    ```
 
 3. **Serve with nginx**
@@ -180,6 +183,11 @@ This guide shows how to deploy the Release Manager tool for your team.
                    secretKeyRef:
                      name: jira-credentials
                      key: token
+               - name: JIRA_EMAIL
+                 valueFrom:
+                   secretKeyRef:
+                     name: jira-credentials
+                     key: email
                volumeMounts:
                - name: scripts
                  mountPath: /scripts
@@ -214,13 +222,12 @@ This guide shows how to deploy the Release Manager tool for your team.
 3. Use **read-only tokens** (no write permissions needed)
 4. Set token expiration in JIRA
 
-**Get JIRA Token:**
-1. Go to https://issues.redhat.com/secure/ViewProfile.jspa
-2. Click "Personal Access Tokens"
-3. Click "Create token"
-4. Name: "Red Hat AI Products Release Planner"
-5. Expiration: 90 days
-6. Copy token immediately
+**Get JIRA Credentials:**
+1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Name: "Red Hat AI Products Release Planner"
+4. Copy token immediately
+5. Set `JIRA_EMAIL` to your Atlassian account email (e.g., `your-email@redhat.com`)
 
 ### Access Control
 
@@ -276,9 +283,9 @@ curl -s https://emarion1.github.io/YOUR-REPO/release-manager.html | grep -o 'Gen
 ### Workflow Fails with "JIRA_TOKEN not set"
 
 **Fix:**
-1. Ensure secret is named exactly `JIRA_TOKEN`
+1. Ensure secrets are named exactly `JIRA_TOKEN` and `JIRA_EMAIL`
 2. Check Settings → Secrets → Actions
-3. Re-add the secret if needed
+3. Re-add the secrets if needed
 
 ### GitHub Pages shows 404
 

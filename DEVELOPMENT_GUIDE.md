@@ -39,8 +39,8 @@ Guide for adding new functionality and customizing the Release Manager.
 1. **Find the field ID in JIRA:**
    ```bash
    # Query JIRA to find field IDs
-   curl -X GET "https://issues.redhat.com/rest/api/2/field" \
-     -H "Authorization: Bearer $JIRA_TOKEN" | jq '.[].id,.name'
+   curl -X GET "https://redhat.atlassian.net/rest/api/3/field" \
+     -u "$JIRA_EMAIL:$JIRA_TOKEN" | jq '.[].id,.name'
    ```
 
 2. **Update `release_manager.py`:**
@@ -79,7 +79,8 @@ Guide for adding new functionality and customizing the Release Manager.
 
 4. **Test:**
    ```bash
-   export JIRA_TOKEN='your-token'
+   export JIRA_EMAIL='your-email@redhat.com'
+   export JIRA_TOKEN='your-api-token'
    python3 release_manager.py
    # Open release-manager.html and verify epic link shows
    ```
@@ -362,7 +363,8 @@ function exportPlan() {
 # 1. Make your changes to release_manager.py or auto_scheduler.py
 
 # 2. Test locally
-export JIRA_TOKEN='your-token'
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 python3 release_manager.py
 
 # 3. View in browser
@@ -400,22 +402,25 @@ grep -A 100 "const recommendedPlan" release-manager.html | head -50
 
 **4. Test JIRA queries independently:**
 ```python
+import base64
 import os
 import requests
 
+JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
 JIRA_TOKEN = os.environ.get("JIRA_TOKEN")
+credentials = base64.b64encode(f"{JIRA_EMAIL}:{JIRA_TOKEN}".encode()).decode()
 headers = {
-    "Authorization": f"Bearer {JIRA_TOKEN}",
+    "Authorization": f"Basic {credentials}",
     "Content-Type": "application/json"
 }
 
 # Test query
 response = requests.get(
-    "https://issues.redhat.com/rest/api/2/search",
+    "https://redhat.atlassian.net/rest/api/3/search/jql",
     headers=headers,
     params={
         "jql": "project = RHAISTRAT AND key = RHAISTRAT-1287",
-        "fields": "key,summary,customfield_12310243"
+        "fields": "key,summary,customfield_10836"
     }
 )
 
@@ -498,7 +503,8 @@ python3 -m pytest test_release_manager.py
 
 ```bash
 # Test full pipeline
-export JIRA_TOKEN='your-token'
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 python3 release_manager.py
 
 # Verify output
@@ -535,7 +541,8 @@ grep -q "Draft Release Plans" release-manager.html || echo "FAIL: Missing tab"
 
 ```bash
 # Generate locally
-export JIRA_TOKEN='your-token'
+export JIRA_EMAIL='your-email@redhat.com'
+export JIRA_TOKEN='your-api-token'
 python3 release_manager.py
 
 # Deploy manually
@@ -589,7 +596,7 @@ Update target versions based on planning:
 
 ```python
 def update_jira_target_version(issue_key, target_version):
-    url = f"{JIRA_BASE_URL}/rest/api/2/issue/{issue_key}"
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{issue_key}"
     data = {
         "fields": {
             FIELD_TARGET_VERSION: {"name": target_version}
@@ -638,7 +645,7 @@ def get_cached_features():
 
 **For JIRA API questions:**
 - JIRA REST API docs: https://docs.atlassian.com/jira/REST/
-- Field IDs: `curl https://issues.redhat.com/rest/api/2/field`
+- Field IDs: `curl -u "$JIRA_EMAIL:$JIRA_TOKEN" https://redhat.atlassian.net/rest/api/3/field`
 - JQL reference: https://support.atlassian.com/jira-software-cloud/docs/use-advanced-search-with-jira-query-language-jql/
 
 **For GitHub Actions questions:**

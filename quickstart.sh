@@ -12,15 +12,27 @@ echo ""
 if [ -z "$JIRA_TOKEN" ]; then
     echo "❌ ERROR: JIRA_TOKEN environment variable not set"
     echo ""
-    echo "Please set your JIRA Personal Access Token:"
-    echo "  export JIRA_TOKEN='your-token-here'"
+    echo "Please set your Atlassian Cloud API token:"
+    echo "  export JIRA_TOKEN='your-api-token'"
     echo ""
-    echo "Get token from: https://issues.redhat.com/secure/ViewProfile.jspa"
+    echo "Get API token from: https://id.atlassian.com/manage-profile/security/api-tokens"
     echo ""
     exit 1
 fi
 
 echo "✅ JIRA_TOKEN is set"
+
+# Check if JIRA_EMAIL is set
+if [ -z "$JIRA_EMAIL" ]; then
+    echo "❌ ERROR: JIRA_EMAIL environment variable not set"
+    echo ""
+    echo "Please set your Atlassian account email:"
+    echo "  export JIRA_EMAIL='your-email@redhat.com'"
+    echo ""
+    exit 1
+fi
+
+echo "✅ JIRA_EMAIL is set"
 echo ""
 
 # Check Python version

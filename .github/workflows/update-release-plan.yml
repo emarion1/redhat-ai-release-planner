@@ -46,6 +46,7 @@ jobs:
       - name: Generate release plan
         env:
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
         run: |
           python3 release_manager.py
 
