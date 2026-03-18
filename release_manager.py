@@ -52,6 +52,7 @@ PLAN_VIEW = "Outcomes & Features (Jeff's View)"
 FIELD_STORY_POINTS = "customfield_10836"
 FIELD_TARGET_VERSION = "customfield_10855"
 FIELD_TARGET_END_DATE = "customfield_10015"  # Target end date for planning
+FIELD_RELEASE_TYPE = "customfield_10851"
 
 # Capacity guidelines - loaded from fit predictor model when available,
 # otherwise falls back to hardcoded defaults from PREDICTIVE_RELEASE_CAPACITY_REPORT.md
@@ -183,7 +184,7 @@ def get_all_features():
     while True:
         params = {
             "jql": jql,
-            "fields": f"key,summary,status,priority,issuetype,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},labels,issuelinks,components,description",
+            "fields": f"key,summary,status,priority,issuetype,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},{FIELD_RELEASE_TYPE},labels,issuelinks,components,description",
             "maxResults": max_results
         }
         if next_page_token:
@@ -308,6 +309,10 @@ def parse_features(issues, ranking):
         # Get labels
         labels = fields.get("labels", [])
 
+        # Extract release type (e.g., "GA", "Tech Preview", "Dev Preview")
+        release_type_field = fields.get(FIELD_RELEASE_TYPE)
+        release_type = release_type_field.get("value") if isinstance(release_type_field, dict) else None
+
         # Extract component count and description for complexity scoring
         components = fields.get("components", [])
         component_count = len(components) if isinstance(components, list) else 0
@@ -329,15 +334,20 @@ def parse_features(issues, ranking):
             description = str(desc_raw)
         feature_status = fields["status"]["name"]
 
-        # Count child issues from issuelinks
+        # Count child issues and extract blocked_by from issuelinks
         child_issue_count = 0
+        blocked_by = []
         for link in fields.get("issuelinks", []):
-            if link.get("type", {}).get("inward", "").lower() in ("is parent of", "is epic of"):
+            link_type = link.get("type", {})
+            if link_type.get("inward", "").lower() in ("is parent of", "is epic of"):
                 if "outwardIssue" in link:
                     child_issue_count += 1
-            elif link.get("type", {}).get("outward", "").lower() in ("is parent of", "is epic of"):
+            elif link_type.get("outward", "").lower() in ("is parent of", "is epic of"):
                 if "outwardIssue" in link:
                     child_issue_count += 1
+            # "is blocked by" — inward link has the blocker in inwardIssue
+            if link_type.get("inward", "").lower() == "is blocked by" and "inwardIssue" in link:
+                blocked_by.append(link["inwardIssue"]["key"])
 
         # Get story points - AUTO-SIZE if 0 or missing
         points = fields.get(FIELD_STORY_POINTS) or 0
@@ -392,6 +402,8 @@ def parse_features(issues, ranking):
             "sizing_method": sizing_method,
             "complexity_score": complexity_score,
             "sizing_confidence": sizing_confidence,
+            "release_type": release_type,
+            "blocked_by": blocked_by,
         }
 
         features.append(feature)
@@ -872,6 +884,60 @@ def calculate_efficiency_score(sizing_analysis):
     return min(100, round(score))
 
 
+def build_plan_data(recommended_plan, optimized_plan):
+    """Build unified planData dict for JS embedding."""
+
+    def bucket_to_js(bucket_data, object_format=False):
+        """Convert a plan bucket to JS-friendly format."""
+        if object_format:
+            features_js = []
+            for f in bucket_data["features"]:
+                entry = {
+                    "key": f["key"],
+                    "points": f["points"],
+                    "split": f.get("optimized", False),
+                    "release_type": f.get("release_type"),
+                    "product": f.get("product", "RHOAI"),
+                    "blocked_by": f.get("blocked_by", []),
+                }
+                if f.get("optimized"):
+                    entry["split_from"] = f["key"].rsplit("-P", 1)[0] if "-P" in f["key"] else ""
+                    entry["split_part"] = int(f["key"][-1]) if f["key"][-2:] in ("-P1", "-P2") else None
+                features_js.append(entry)
+        else:
+            features_js = [{
+                "key": f["key"],
+                "points": f["points"],
+                "split": False,
+                "release_type": f.get("release_type"),
+                "product": f.get("product", "RHOAI"),
+                "blocked_by": f.get("blocked_by", []),
+            } for f in bucket_data["features"]]
+        return {
+            "features": features_js,
+            "points": bucket_data["points"],
+            "capacity_status": bucket_data["capacity_status"],
+        }
+
+    baseline = {}
+    if recommended_plan:
+        for k, v in recommended_plan.items():
+            baseline[k] = bucket_to_js(v, object_format=False)
+
+    optimized = {}
+    splits_applied = 0
+    if optimized_plan and optimized_plan.get("plan"):
+        for k, v in optimized_plan["plan"].items():
+            optimized[k] = bucket_to_js(v, object_format=True)
+        splits_applied = optimized_plan.get("split_count", 0)
+
+    return {
+        "baseline": baseline,
+        "optimized": optimized,
+        "metadata": {"splits_applied": splits_applied},
+    }
+
+
 def generate_html(features, releases, unscheduled, capacity, recommended_plan=None, backlog_analysis=None, optimized_plan=None):
     """Generate interactive HTML release manager"""
 
@@ -883,19 +949,6 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
     release_metrics = {}
     for release_num, release_data in releases.items():
         release_metrics[release_num] = calculate_release_metrics(release_data)
-
-    # Prepare recommended plan for embedding
-    if recommended_plan:
-        # Convert to simpler format for JavaScript
-        recommended_plan_js = {}
-        for bucket_key, bucket_data in recommended_plan.items():
-            recommended_plan_js[bucket_key] = {
-                "features": [f["key"] for f in bucket_data["features"]],
-                "points": bucket_data["points"],
-                "capacity_status": bucket_data["capacity_status"]
-            }
-    else:
-        recommended_plan_js = {}
 
     # Compute release fit data per-event for the Release Fit tab
     release_fit_data = {}
@@ -1187,6 +1240,115 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             background: #0052cc;
             color: white;
             border-color: #0052cc;
+        }}
+
+        /* Capacity slider */
+        .capacity-slider-container {{
+            background: white;
+            padding: 20px 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .capacity-slider {{
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            border-radius: 4px;
+            outline: none;
+            margin: 15px 0;
+        }}
+
+        .capacity-slider::-webkit-slider-thumb {{
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }}
+
+        .slider-labels {{
+            font-size: 11px;
+            color: #666;
+            height: 24px;
+        }}
+
+        .slider-labels span {{
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }}
+
+        /* Plan mode toggle */
+        .plan-mode-selector {{
+            display: inline-flex;
+            background: #f0f0f0;
+            border-radius: 8px;
+            padding: 3px;
+            margin-left: 20px;
+        }}
+
+        .mode-btn {{
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s;
+        }}
+
+        .mode-btn:hover {{
+            color: #333;
+        }}
+
+        .mode-btn.active {{
+            background: #667eea;
+            color: white;
+            box-shadow: 0 2px 4px rgba(102,126,234,0.3);
+        }}
+
+        .mode-badge {{
+            display: inline-block;
+            background: #ff8b00;
+            color: white;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }}
+
+        /* Split indicator */
+        .split-indicator {{
+            display: inline-block;
+            background: #e7f3ff;
+            color: #0052cc;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }}
+
+        /* Over-capacity dimming */
+        .feature-dimmed {{
+            opacity: 0.35;
+            filter: grayscale(50%);
+            transition: opacity 0.3s, filter 0.3s;
+        }}
+
+        .event-over-capacity {{
+            border-left-color: #dc3545 !important;
+            background: #fff5f5 !important;
         }}
 
         .metrics-grid {{
@@ -1509,15 +1671,41 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         html += f'                <button class="product-btn" onclick="filterDraftsProduct(\'{prod}\', this)">{prod}</button>\n'
 
     html += """            </div>
-            <div class="alert alert-info">
-                <strong>📝 AI-Recommended 2-Year Release Plan</strong>
-                <span class="info-icon" onclick="showInfo('draft-plan')">ℹ️</span>
-                <p style="margin-top: 10px; font-size: 14px;">
-                    This plan was generated by the auto-scheduler based on:
-                    <br>• Priority ranking from JIRA Plan
-                    <br>• Feature story points
-                    <br>• Capacity guidelines (target 50 pts/event, max 80 pts/event)
-                </p>
+            <div class="alert alert-info" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;">
+                <div>
+                    <strong>📝 AI-Recommended 2-Year Release Plan</strong>
+                    <span class="info-icon" onclick="showInfo('draft-plan')">ℹ️</span>
+                    <p style="margin-top: 10px; font-size: 14px;">
+                        Auto-scheduled by priority ranking, story points &amp; capacity.
+                        Use the slider to adjust per-event capacity and see features rebalance dynamically.
+                    </p>
+                </div>
+                <div class="plan-mode-selector">
+                    <button class="mode-btn active" id="mode-btn-baseline" onclick="setPlanMode('baseline')">Baseline</button>
+                    <button class="mode-btn" id="mode-btn-optimized" onclick="setPlanMode('optimized')">
+                        Optimized (XL Split)
+                        <span class="mode-badge" id="split-count-badge"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Capacity slider -->
+            <div class="capacity-slider-container">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <strong style="font-size: 14px;">Capacity Limit per Event</strong>
+                    <span id="capacity-value" style="font-size: 18px; font-weight: 700; color: #667eea;">80 pts</span>
+                    <span id="capacity-risk" style="font-size: 13px; font-weight: 500; padding: 3px 10px; border-radius: 4px; background: #fff0e6; color: #c45100;">Aggressive</span>
+                </div>
+                <input type="range" class="capacity-slider" id="capacity-slider" min="30" max="140" value="80" step="5"
+                    oninput="updateCapacitySlider(this.value)">
+                <div style="position: relative; height: 10px; margin: 0 6px; border-radius: 5px; background: linear-gradient(to right, #28a745 0%, #28a745 0.9%, #ffc107 0.9%, #ffc107 18.2%, #ff8b00 18.2%, #ff8b00 45.5%, #dc3545 45.5%, #dc3545 100%);">
+                </div>
+                <div class="slider-labels" style="position: relative; margin-top: 8px;">
+                    <span style="position: absolute; left: 0%; background: #e3fcef; color: #006644;">≤30 Conservative</span>
+                    <span style="position: absolute; left: 18.2%; transform: translateX(-50%); background: #fff3cd; color: #856404;">31-50 Typical</span>
+                    <span style="position: absolute; left: 45.5%; transform: translateX(-50%); background: #fff0e6; color: #c45100;">51-80 Aggressive</span>
+                    <span style="position: absolute; right: 0%; background: #fff5f5; color: #de350b;">81-140 Maximum</span>
+                </div>
             </div>
 
             <div id="draft-plan-display">
@@ -1620,15 +1808,15 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         const releaseMetrics = """ + json.dumps(release_metrics, indent=2) + """;
         const capacity = """ + json.dumps(capacity, indent=2) + """;
         const allProducts = """ + json.dumps(products_in_data, indent=2) + """;
-        const recommendedPlan = """ + json.dumps(recommended_plan_js, indent=2) + """;
+        const planData = """ + json.dumps(build_plan_data(recommended_plan, optimized_plan), indent=2) + """;
 
         // Backlog analysis data
         const backlogAnalysis = """ + json.dumps(backlog_analysis if backlog_analysis else {}, indent=2) + """;
 
         // Full feature lookup for getting names and details
-        const allFeatures = """ + json.dumps({f["key"]: {"summary": f["summary"], "points": f["points"], "product": f.get("product", "RHOAI"), "issue_type": f.get("issue_type", "Feature")} for f in features}, indent=2) + """;
+        const allFeatures = """ + json.dumps({f["key"]: {"summary": f["summary"], "points": f["points"], "product": f.get("product", "RHOAI"), "issue_type": f.get("issue_type", "Feature"), "release_type": f.get("release_type"), "blocked_by": f.get("blocked_by", [])} for f in features}, indent=2) + """;
 
-        // Optimized plan data with full feature info
+        // Optimized plan data with full feature info (kept for analysis tab)
         const optimizedPlanData = """ + json.dumps(
             {
                 "plan": {k: {
@@ -1649,6 +1837,12 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         let currentDraftsProduct = 'ALL';
         let currentAnalysisProduct = 'ALL';
         let currentFitProduct = 'ALL';
+
+        // Rebalancing state
+        let currentPlanMode = 'baseline';
+        let currentCapacityLimit = 80;
+        let orderedFeatures = [];
+        let rebalancedPlan = {};
 
         // Feature lookup for quick access
         const featureElements = {};
@@ -1704,6 +1898,8 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             document.querySelectorAll('#drafts-product-filters .product-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentDraftsProduct = product;
+            orderedFeatures = getOrderedFeatures(currentPlanMode);
+            rebalancedPlan = rebalance(orderedFeatures, currentCapacityLimit);
             renderDraftPlan();
         }
 
@@ -1721,6 +1917,199 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             btn.classList.add('active');
             currentFitProduct = product;
             renderReleaseFitTab();
+        }
+
+        // --- Rebalancing engine ---
+
+        function getOrderedFeatures(mode) {
+            const plan = planData[mode] || {};
+            const features = [];
+            const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
+            const bucketKeys = Object.keys(plan).sort((a, b) => {
+                const [verA, evA] = a.split('-');
+                const [verB, evB] = b.split('-');
+                const verCmp = parseFloat(verA) - parseFloat(verB);
+                if (verCmp !== 0) return verCmp;
+                return (eventOrder[evA] || 0) - (eventOrder[evB] || 0);
+            });
+            for (const bk of bucketKeys) {
+                const bucket = plan[bk];
+                if (bucket && bucket.features) {
+                    for (const f of bucket.features) {
+                        const key = typeof f === 'object' ? f.key : f;
+                        const pts = typeof f === 'object' ? f.points : (allFeatures[key] ? allFeatures[key].points : 0);
+                        const isSplit = typeof f === 'object' ? (f.split || false) : false;
+                        const splitFrom = typeof f === 'object' ? (f.split_from || null) : null;
+                        const splitPart = typeof f === 'object' ? (f.split_part || null) : null;
+                        let releaseType = typeof f === 'object' ? f.release_type : null;
+                        if (releaseType == null) {
+                            const lookupKey = splitFrom || key;
+                            const feat = allFeatures[lookupKey] || allFeatures[key];
+                            releaseType = feat ? feat.release_type : null;
+                        }
+                        let product = typeof f === 'object' ? f.product : null;
+                        if (!product) {
+                            const feat = allFeatures[key];
+                            product = feat ? feat.product : 'RHOAI';
+                        }
+                        let blockedBy = typeof f === 'object' ? (f.blocked_by || []) : [];
+                        if (blockedBy.length === 0) {
+                            const feat = allFeatures[key];
+                            blockedBy = feat ? (feat.blocked_by || []) : [];
+                        }
+                        features.push({ key, points: pts, split: isSplit, split_from: splitFrom, split_part: splitPart, release_type: releaseType, product: product, blocked_by: blockedBy });
+                    }
+                }
+            }
+            return features;
+        }
+
+        function rebalance(features, capacityLimit) {
+            const plan = planData[currentPlanMode] || {};
+            const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
+            let bucketKeys = Object.keys(plan).sort((a, b) => {
+                const [verA, evA] = a.split('-');
+                const [verB, evB] = b.split('-');
+                const verCmp = parseFloat(verA) - parseFloat(verB);
+                if (verCmp !== 0) return verCmp;
+                return (eventOrder[evA] || 0) - (eventOrder[evB] || 0);
+            });
+
+            // Product filtering: filter features and optionally filter buckets
+            let filteredFeatures = features;
+            if (currentDraftsProduct !== 'ALL') {
+                filteredFeatures = features.filter(f => f.product === currentDraftsProduct);
+            }
+
+            // Dependency-aware ordering: topological sort respecting blocked_by
+            // Build a map of feature key -> index for features in our list
+            const featureKeySet = new Set(filteredFeatures.map(f => f.key));
+            // Also map split keys back to their parent
+            const keyMap = {};
+            filteredFeatures.forEach((f, i) => { keyMap[f.key] = i; });
+
+            // Topological sort: place blockers before dependents
+            const sorted = [];
+            const visited = new Set();
+            const visiting = new Set();
+
+            function visit(idx) {
+                if (visited.has(idx)) return;
+                if (visiting.has(idx)) return; // cycle - break it
+                visiting.add(idx);
+                const f = filteredFeatures[idx];
+                for (const dep of f.blocked_by) {
+                    // Find the dependency in our feature list
+                    if (keyMap[dep] !== undefined) {
+                        visit(keyMap[dep]);
+                    }
+                }
+                visiting.delete(idx);
+                visited.add(idx);
+                sorted.push(filteredFeatures[idx]);
+            }
+
+            for (let i = 0; i < filteredFeatures.length; i++) {
+                visit(i);
+            }
+            filteredFeatures = sorted;
+
+            // Build a map: blocker key -> minimum bucket index where it was placed
+            const placedBucketIndex = {};
+
+            // Initialize empty buckets
+            const result = {};
+            for (const bk of bucketKeys) {
+                result[bk] = { features: [], points: 0, capacity_status: 'conservative' };
+            }
+
+            const overflow = [];
+
+            for (const feat of filteredFeatures) {
+                const rt = feat.release_type;
+                let eligibleEvents;
+                if (rt === 'GA') {
+                    eligibleEvents = new Set(['GA']);
+                } else {
+                    eligibleEvents = new Set(['EA1', 'EA2', 'GA']);
+                }
+
+                // Determine minimum bucket index based on dependencies
+                let minBucketIdx = 0;
+                for (const dep of feat.blocked_by) {
+                    if (placedBucketIndex[dep] !== undefined) {
+                        minBucketIdx = Math.max(minBucketIdx, placedBucketIndex[dep]);
+                    }
+                }
+
+                let placed = false;
+                for (let bi = 0; bi < bucketKeys.length; bi++) {
+                    if (bi < minBucketIdx) continue;
+                    const bk = bucketKeys[bi];
+                    const eventType = bk.split('-')[1];
+                    if (!eligibleEvents.has(eventType)) continue;
+                    const bucket = result[bk];
+                    if (bucket.features.length === 0 || bucket.points + feat.points <= capacityLimit) {
+                        bucket.features.push(feat);
+                        bucket.points += feat.points;
+                        placedBucketIndex[feat.key] = bi;
+                        placed = true;
+                        break;
+                    }
+                }
+
+                if (!placed) {
+                    overflow.push(feat);
+                }
+            }
+
+            // Compute capacity_status for each bucket
+            for (const bk of bucketKeys) {
+                const pts = result[bk].points;
+                if (pts <= 30) result[bk].capacity_status = 'conservative';
+                else if (pts <= 50) result[bk].capacity_status = 'typical';
+                else if (pts <= 80) result[bk].capacity_status = 'aggressive';
+                else if (pts <= 140) result[bk].capacity_status = 'maximum';
+                else result[bk].capacity_status = 'over_capacity';
+            }
+
+            return { plan: result, overflow: overflow };
+        }
+
+        function setPlanMode(mode) {
+            currentPlanMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode-btn-' + mode).classList.add('active');
+            orderedFeatures = getOrderedFeatures(mode);
+            rebalancedPlan = rebalance(orderedFeatures, currentCapacityLimit);
+            renderDraftPlan();
+        }
+
+        function updateCapacitySlider(value) {
+            currentCapacityLimit = parseInt(value);
+            const valEl = document.getElementById('capacity-value');
+            const riskEl = document.getElementById('capacity-risk');
+            const slider = document.getElementById('capacity-slider');
+
+            valEl.textContent = value + ' pts';
+
+            let label, bgColor, textColor, sliderBg;
+            if (value <= 30) {
+                label = 'Conservative'; bgColor = '#e3fcef'; textColor = '#006644'; sliderBg = '#28a745';
+            } else if (value <= 50) {
+                label = 'Typical'; bgColor = '#fff3cd'; textColor = '#856404'; sliderBg = '#ffc107';
+            } else if (value <= 80) {
+                label = 'Aggressive'; bgColor = '#fff0e6'; textColor = '#c45100'; sliderBg = '#ff8b00';
+            } else {
+                label = 'Maximum'; bgColor = '#fff5f5'; textColor = '#de350b'; sliderBg = '#dc3545';
+            }
+            riskEl.textContent = label;
+            riskEl.style.background = bgColor;
+            riskEl.style.color = textColor;
+            slider.style.background = `linear-gradient(to right, ${sliderBg} 0%, ${sliderBg} ${(value - 30) / 110 * 100}%, #e0e0e0 ${(value - 30) / 110 * 100}%, #e0e0e0 100%)`;
+
+            rebalancedPlan = rebalance(orderedFeatures, currentCapacityLimit);
+            renderDraftPlan();
         }
 
         // Load release tracking details
@@ -2062,6 +2451,34 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                             <li><strong>Sequential Fill:</strong> Fills 3.5 EA1 → EA2 → GA → 3.6 EA1 → etc.</li>
                         </ul>
                     </div>
+                    <div class="info-card">
+                        <h4>Capacity Slider &amp; Dynamic Rebalancing</h4>
+                        <p>Drag the slider to adjust the maximum story points per event (30-140). Features are dynamically redistributed across release events in real time:</p>
+                        <ul>
+                            <li><strong>Lower capacity:</strong> Features spread across more events; overflow shown at bottom</li>
+                            <li><strong>Higher capacity:</strong> Features consolidate into fewer, earlier events</li>
+                            <li><strong>Default (80 pts):</strong> Matches the original aggressive-max plan</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>Baseline vs Optimized Mode</h4>
+                        <p>Toggle between two plan variants:</p>
+                        <ul>
+                            <li><strong>Baseline:</strong> Original features at their JIRA-estimated sizes</li>
+                            <li><strong>Optimized (XL Split):</strong> Large XL features (13 pts) are split into two smaller parts (8 + 5 pts) for faster delivery</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>Product-Scoped Rebalancing</h4>
+                        <p>When you select a product filter (e.g., RHAIIS), only that product's features are rebalanced into their release buckets. The ALL filter shows all products together.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Release Type &amp; Dependency Constraints</h4>
+                        <ul>
+                            <li><strong>Release type:</strong> GA-type features are only placed in GA events</li>
+                            <li><strong>Dependencies:</strong> Features blocked by other features are never scheduled earlier than their blockers</li>
+                        </ul>
+                    </div>
                 `,
                 'analysis': `
                     <h3>About Feature Analysis</h3>
@@ -2113,11 +2530,12 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             }
         }
 
-        // Render draft plan
+        // Render draft plan using rebalanced data
         function renderDraftPlan() {
             const container = document.getElementById('draft-plan-display');
+            const activePlan = rebalancedPlan.plan || {};
 
-            if (!recommendedPlan || Object.keys(recommendedPlan).length === 0) {
+            if (Object.keys(activePlan).length === 0) {
                 container.innerHTML = `
                     <div class="alert alert-warning">
                         <strong>⚠️ No draft plan available</strong>
@@ -2131,13 +2549,18 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 return;
             }
 
+            // Update split count badge
+            const badge = document.getElementById('split-count-badge');
+            if (badge && planData.metadata) {
+                badge.textContent = planData.metadata.splits_applied > 0 ? planData.metadata.splits_applied + ' splits' : '';
+            }
+
             // Group by release version
             const quarters = {
                 "3.5": "Q2 2026", "3.6": "Q3 2026", "3.7": "Q4 2026", "3.8": "Q1 2027",
                 "3.9": "Q2 2027", "3.10": "Q3 2027", "3.11": "Q4 2027", "3.12": "Q1 2028"
             };
 
-            // Release goals based on key themes
             const releaseGoals = {
                 "3.5": "Focus on distributed inference improvements, model serving enhancements, and evaluation capabilities.",
                 "3.6": "Advance observability and showback features, API parity improvements, and agent metadata support.",
@@ -2150,51 +2573,24 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             };
 
             const releases = {};
-            for (const bucketKey in recommendedPlan) {
+            for (const bucketKey in activePlan) {
                 const [version, event] = bucketKey.split('-');
                 if (!releases[version]) {
                     releases[version] = { EA1: null, EA2: null, GA: null };
                 }
-                releases[version][event] = recommendedPlan[bucketKey];
-            }
-
-            // Apply product filter
-            if (currentDraftsProduct !== 'ALL') {
-                for (const version in releases) {
-                    for (const event in releases[version]) {
-                        if (releases[version][event]) {
-                            const orig = releases[version][event];
-                            const filtered = orig.features.filter(key => {
-                                const f = allFeatures[key];
-                                return f && f.product === currentDraftsProduct;
-                            });
-                            const pts = filtered.reduce((s, key) => s + (allFeatures[key] ? allFeatures[key].points : 0), 0);
-                            releases[version][event] = {
-                                features: filtered,
-                                points: pts,
-                                capacity_status: pts <= 30 ? 'conservative' : pts <= 50 ? 'typical' : pts <= 80 ? 'aggressive' : 'over_capacity'
-                            };
-                        }
-                    }
-                }
+                releases[version][event] = activePlan[bucketKey];
             }
 
             let html = '';
 
-            // Render each release (only 3.4 and after)
             const sortedVersions = Object.keys(releases)
                 .filter(v => parseFloat(v) >= 3.4)
-                .sort((a, b) => {
-                    const aNum = parseFloat(a);
-                    const bNum = parseFloat(b);
-                    return aNum - bNum;
-                });
+                .sort((a, b) => parseFloat(a) - parseFloat(b));
 
             for (const version of sortedVersions) {
                 const releaseData = releases[version];
                 const quarter = quarters[version] || '';
 
-                // Calculate release totals
                 let releaseTotalFeatures = 0;
                 let releaseTotalPoints = 0;
                 for (const event in releaseData) {
@@ -2222,15 +2618,16 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                 `;
 
-                // Render each event
                 for (const event of ['EA1', 'EA2', 'GA']) {
                     const eventData = releaseData[event];
 
                     if (eventData && eventData.features.length > 0) {
+                        const overCapacity = eventData.points > currentCapacityLimit;
                         const statusIcon = {
                             'conservative': '🟢',
                             'typical': '🟡',
                             'aggressive': '🟠',
+                            'maximum': '🔴',
                             'over_capacity': '🔴'
                         }[eventData.capacity_status] || '⚪';
 
@@ -2238,13 +2635,20 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                             'conservative': '#28a745',
                             'typical': '#90ee90',
                             'aggressive': '#ffc107',
+                            'maximum': '#dc3545',
                             'over_capacity': '#dc3545'
                         }[eventData.capacity_status] || '#ccc';
 
+                        const overCapacityClass = overCapacity ? ' event-over-capacity' : '';
+
+                        // JIRA search link for event heading
+                        const jiraKeys = eventData.features.map(f => (typeof f === 'object' ? f.key : f)).join(',');
+                        const jiraSearchUrl = jiraBaseUrl + '/issues/?jql=key in (' + jiraKeys + ')';
+
                         html += `
-                            <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; border-left: 4px solid ${statusColor};">
+                            <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; border-left: 4px solid ${statusColor};" class="${overCapacityClass}">
                                 <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">
-                                    ${event} ${statusIcon}
+                                    <a href="${jiraSearchUrl}" target="_blank" style="color: #333; text-decoration: none;">${event} ${statusIcon}</a>
                                 </h3>
                                 <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">
                                     <strong>${eventData.features.length} features, ${eventData.points} pts</strong>
@@ -2253,21 +2657,17 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                                 </p>
                         `;
 
-                        // Calculate size distribution for this event
+                        // Calculate size distribution
                         const sizeDistribution = { XL: 0, L: 0, M: 0, S: 0, XS: 0 };
-                        eventData.features.forEach(key => {
-                            const feature = allFeatures[key];
-                            if (feature) {
-                                const pts = feature.points;
-                                if (pts >= 13) sizeDistribution.XL++;
-                                else if (pts >= 8) sizeDistribution.L++;
-                                else if (pts >= 5) sizeDistribution.M++;
-                                else if (pts >= 3) sizeDistribution.S++;
-                                else sizeDistribution.XS++;
-                            }
+                        eventData.features.forEach(f => {
+                            const pts = typeof f === 'object' ? f.points : (allFeatures[f] ? allFeatures[f].points : 0);
+                            if (pts >= 13) sizeDistribution.XL++;
+                            else if (pts >= 8) sizeDistribution.L++;
+                            else if (pts >= 5) sizeDistribution.M++;
+                            else if (pts >= 3) sizeDistribution.S++;
+                            else sizeDistribution.XS++;
                         });
 
-                        // Show size summary
                         html += `
                                 <div style="background: white; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 11px;">
                                     <strong>Sizes:</strong>
@@ -2279,50 +2679,72 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                         });
                         html += `</div>`;
 
-                        // Show feature list with names and sizes
+                        // Feature list
                         html += `<div style="max-height: 200px; overflow-y: auto;">`;
-                        eventData.features.forEach(key => {
-                            const feature = allFeatures[key];
+                        eventData.features.forEach(f => {
+                            const key = typeof f === 'object' ? f.key : f;
+                            const pts = typeof f === 'object' ? f.points : (allFeatures[key] ? allFeatures[key].points : 0);
+                            const isSplit = typeof f === 'object' ? f.split : false;
+                            const lookupKey = (typeof f === 'object' && f.split_from) ? f.split_from : key;
+                            const feature = allFeatures[lookupKey] || allFeatures[key];
+                            const size = pts >= 13 ? 'XL' : pts >= 8 ? 'L' : pts >= 5 ? 'M' : pts >= 3 ? 'S' : 'XS';
+
                             if (feature) {
-                                const pts = feature.points;
-                                const size = pts >= 13 ? 'XL' : pts >= 8 ? 'L' : pts >= 5 ? 'M' : pts >= 3 ? 'S' : 'XS';
                                 html += `
                                     <div style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 11px;">
                                         <div style="font-weight: 600; color: #0052cc; margin-bottom: 2px;">
-                                            ${key}
+                                            <a href="${jiraBaseUrl}/browse/${lookupKey}" target="_blank" style="color: #0052cc; text-decoration: none;">${key}</a>
                                             <span style="background: #667eea; color: white; padding: 1px 4px; border-radius: 2px; font-size: 10px; margin-left: 4px;">${pts}pts ${size}</span>
+                                `;
+                                if (isSplit) {
+                                    html += `<span class="split-indicator">SPLIT</span>`;
+                                }
+                                html += `
                                         </div>
                                         <div style="color: #666; font-size: 10px;">${feature.summary.substring(0, 80)}${feature.summary.length > 80 ? '...' : ''}</div>
                                     </div>
                                 `;
                             } else {
-                                html += `<div style="padding: 3px 0; color: #0052cc;">• ${key}</div>`;
+                                html += `<div style="padding: 3px 0; color: #0052cc;">• <a href="${jiraBaseUrl}/browse/${key}" target="_blank" style="color: #0052cc;">${key}</a></div>`;
                             }
                         });
                         html += `</div>`;
 
-                        html += `
-                            </div>
-                        `;
+                        html += `</div>`;
                     } else {
-                        // Empty event
                         html += `
                             <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; border-left: 4px solid #ccc;">
-                                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #999;">
-                                    ${event}
-                                </h3>
-                                <p style="margin: 0; font-size: 14px; color: #999;">
-                                    <em>No features scheduled</em>
-                                </p>
+                                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #999;">${event}</h3>
+                                <p style="margin: 0; font-size: 14px; color: #999;"><em>No features scheduled</em></p>
                             </div>
                         `;
                     }
                 }
 
+                html += `</div></div>`;
+            }
+
+            // Overflow notice
+            if (rebalancedPlan.overflow && rebalancedPlan.overflow.length > 0) {
+                const overflowPts = rebalancedPlan.overflow.reduce((s, f) => s + f.points, 0);
                 html += `
-                        </div>
-                    </div>
+                    <div style="background: #fff5f5; border-left: 4px solid #dc3545; padding: 15px 20px; border-radius: 4px; margin-top: 15px;">
+                        <strong style="color: #dc3545;">Unscheduled Overflow:</strong>
+                        <span style="color: #555;"> ${rebalancedPlan.overflow.length} features (${overflowPts} pts) could not fit within the ${currentCapacityLimit}-pt per-event limit.</span>
+                        <br><span style="font-size: 12px; color: #888;">Increase the capacity slider or add more release events to accommodate these features.</span>
+                        <div style="margin-top: 10px; max-height: 150px; overflow-y: auto;">
                 `;
+                rebalancedPlan.overflow.forEach(f => {
+                    const lookupKey = f.split_from || f.key;
+                    const feat = allFeatures[lookupKey] || allFeatures[f.key];
+                    const summary = feat ? feat.summary || '' : '';
+                    html += `<div style="padding: 4px 0; border-bottom: 1px solid #f0d0d0; font-size: 11px;">
+                        <a href="${jiraBaseUrl}/browse/${lookupKey}" target="_blank" style="color: #0052cc; font-weight: 600;">${f.key}</a>
+                        <span style="background: #667eea; color: white; padding: 1px 4px; border-radius: 2px; font-size: 10px; margin-left: 4px;">${f.points}pts</span>
+                        <span style="color: #666; margin-left: 6px;">${summary.substring(0, 70)}${summary.length > 70 ? '...' : ''}</span>
+                    </div>`;
+                });
+                html += `</div></div>`;
             }
 
             container.innerHTML = html;
@@ -2330,7 +2752,17 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
         // Initialize draft plan on load
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize rebalancing
+            if (planData.metadata && planData.metadata.splits_applied > 0) {
+                currentPlanMode = 'optimized';
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                const optBtn = document.getElementById('mode-btn-optimized');
+                if (optBtn) optBtn.classList.add('active');
+            }
+            orderedFeatures = getOrderedFeatures(currentPlanMode);
+            rebalancedPlan = rebalance(orderedFeatures, currentCapacityLimit);
             renderDraftPlan();
+            updateCapacitySlider(80);
             renderAnalysis();
         });
 
@@ -2892,12 +3324,14 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
             <div class="info-card">
                 <h4>📝 Draft Release Plans</h4>
-                <p>View AI-recommended 2-year release plan (3.5-3.12)</p>
+                <p>View AI-recommended 2-year release plan (3.5-3.12) with dynamic rebalancing</p>
                 <ul>
-                    <li><strong>Auto-Generated:</strong> Features distributed by priority & target dates</li>
-                    <li><strong>Capacity-Aware:</strong> Respects 80 pts/event maximum</li>
-                    <li><strong>Release Goals:</strong> Each release shows strategic objectives</li>
-                    <li><strong>Detailed View:</strong> Shows feature names, sizes, and summaries for each event</li>
+                    <li><strong>Capacity Slider:</strong> Drag to adjust per-event capacity (30-140 pts) — features dynamically rebalance</li>
+                    <li><strong>Baseline / Optimized:</strong> Toggle XL feature splitting for faster delivery</li>
+                    <li><strong>Product Filters:</strong> Select a product to rebalance only that product's features</li>
+                    <li><strong>Release Type:</strong> GA-type features only placed in GA events</li>
+                    <li><strong>Dependencies:</strong> Blocked features never scheduled before their blockers</li>
+                    <li><strong>Overflow Notice:</strong> Features that don't fit are shown at the bottom</li>
                 </ul>
             </div>
 
