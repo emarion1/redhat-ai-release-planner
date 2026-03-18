@@ -428,6 +428,26 @@ def _extract_product(scheduled_to):
     return "RHOAI"  # default
 
 
+def _infer_product(feature):
+    """Infer product from labels, summary, or other signals when scheduled_to is absent."""
+    # Check labels for product-prefixed values (e.g., "rhoai-3.4", "rhaiis-3.3")
+    for label in feature.get("labels", []):
+        label_upper = label.upper()
+        for product in KNOWN_PRODUCTS:
+            if label_upper.startswith(product):
+                return product
+
+    # Check summary text for product mentions
+    summary_upper = feature.get("summary", "").upper()
+    # Check RHAIIS and RHELAI first (more specific), then fall back to RHOAI
+    if "RHAIIS" in summary_upper:
+        return "RHAIIS"
+    if "RHELAI" in summary_upper:
+        return "RHELAI"
+
+    return "RHOAI"
+
+
 def group_features_by_release(features):
     """Group features by scheduled release"""
     releases = defaultdict(lambda: {
@@ -442,7 +462,7 @@ def group_features_by_release(features):
         scheduled_to = feature["scheduled_to"]
 
         if not scheduled_to:
-            feature["product"] = "RHOAI"
+            feature["product"] = _infer_product(feature)
             unscheduled.append(feature)
             continue
 
@@ -1921,17 +1941,35 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
         // --- Rebalancing engine ---
 
+        // Parse bucket key: "3.5-EA1" or "RHAIIS:3.5-EA1"
+        function parseBucketKey(bk) {
+            let product = 'RHOAI', versionEvent = bk;
+            if (bk.includes(':')) {
+                const parts = bk.split(':');
+                product = parts[0];
+                versionEvent = parts[1];
+            }
+            const [version, event] = versionEvent.split('-');
+            return { product, version, event, versionEvent };
+        }
+
+        function sortBucketKeys(keys) {
+            const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
+            return keys.slice().sort((a, b) => {
+                const pa = parseBucketKey(a);
+                const pb = parseBucketKey(b);
+                // Sort by product first, then version, then event
+                if (pa.product !== pb.product) return pa.product.localeCompare(pb.product);
+                const verCmp = parseFloat(pa.version) - parseFloat(pb.version);
+                if (verCmp !== 0) return verCmp;
+                return (eventOrder[pa.event] || 0) - (eventOrder[pb.event] || 0);
+            });
+        }
+
         function getOrderedFeatures(mode) {
             const plan = planData[mode] || {};
             const features = [];
-            const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
-            const bucketKeys = Object.keys(plan).sort((a, b) => {
-                const [verA, evA] = a.split('-');
-                const [verB, evB] = b.split('-');
-                const verCmp = parseFloat(verA) - parseFloat(verB);
-                if (verCmp !== 0) return verCmp;
-                return (eventOrder[evA] || 0) - (eventOrder[evB] || 0);
-            });
+            const bucketKeys = sortBucketKeys(Object.keys(plan));
             for (const bk of bucketKeys) {
                 const bucket = plan[bk];
                 if (bucket && bucket.features) {
@@ -1966,19 +2004,14 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
         function rebalance(features, capacityLimit) {
             const plan = planData[currentPlanMode] || {};
-            const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
-            let bucketKeys = Object.keys(plan).sort((a, b) => {
-                const [verA, evA] = a.split('-');
-                const [verB, evB] = b.split('-');
-                const verCmp = parseFloat(verA) - parseFloat(verB);
-                if (verCmp !== 0) return verCmp;
-                return (eventOrder[evA] || 0) - (eventOrder[evB] || 0);
-            });
+            let bucketKeys = sortBucketKeys(Object.keys(plan));
 
-            // Product filtering: filter features and optionally filter buckets
+            // Product filtering: filter features and buckets
             let filteredFeatures = features;
             if (currentDraftsProduct !== 'ALL') {
                 filteredFeatures = features.filter(f => f.product === currentDraftsProduct);
+                // Also filter buckets to only this product's buckets
+                bucketKeys = bucketKeys.filter(bk => parseBucketKey(bk).product === currentDraftsProduct);
             }
 
             // Dependency-aware ordering: topological sort respecting blocked_by
@@ -2046,7 +2079,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 for (let bi = 0; bi < bucketKeys.length; bi++) {
                     if (bi < minBucketIdx) continue;
                     const bk = bucketKeys[bi];
-                    const eventType = bk.split('-')[1];
+                    const eventType = parseBucketKey(bk).event;
                     if (!eligibleEvents.has(eventType)) continue;
                     const bucket = result[bk];
                     if (bucket.features.length === 0 || bucket.points + feat.points <= capacityLimit) {
@@ -2572,28 +2605,37 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 "3.12": "Refine IDE integration, Feature Store RBAC, and lifecycle documentation for enterprise readiness."
             };
 
+            // Group buckets by "product-version" composite key
             const releases = {};
             for (const bucketKey in activePlan) {
-                const [version, event] = bucketKey.split('-');
-                if (!releases[version]) {
-                    releases[version] = { EA1: null, EA2: null, GA: null };
+                const parsed = parseBucketKey(bucketKey);
+                const releaseKey = parsed.product + '-' + parsed.version;
+                if (!releases[releaseKey]) {
+                    releases[releaseKey] = { product: parsed.product, version: parsed.version, EA1: null, EA2: null, GA: null };
                 }
-                releases[version][event] = activePlan[bucketKey];
+                releases[releaseKey][parsed.event] = activePlan[bucketKey];
             }
 
             let html = '';
 
-            const sortedVersions = Object.keys(releases)
-                .filter(v => parseFloat(v) >= 3.4)
-                .sort((a, b) => parseFloat(a) - parseFloat(b));
+            // Sort release keys: by product, then version
+            const sortedReleaseKeys = Object.keys(releases).sort((a, b) => {
+                const ra = releases[a], rb = releases[b];
+                if (ra.product !== rb.product) return ra.product.localeCompare(rb.product);
+                return parseFloat(ra.version) - parseFloat(rb.version);
+            });
 
-            for (const version of sortedVersions) {
-                const releaseData = releases[version];
+            for (const releaseKey of sortedReleaseKeys) {
+                const releaseData = releases[releaseKey];
+                const version = releaseData.version;
+                const product = releaseData.product;
                 const quarter = quarters[version] || '';
+
+                if (parseFloat(version) < 3.4) continue;
 
                 let releaseTotalFeatures = 0;
                 let releaseTotalPoints = 0;
-                for (const event in releaseData) {
+                for (const event of ['EA1', 'EA2', 'GA']) {
                     if (releaseData[event]) {
                         releaseTotalFeatures += releaseData[event].features.length;
                         releaseTotalPoints += releaseData[event].points;
@@ -2605,7 +2647,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 html += `
                     <div style="background: white; border-radius: 8px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <h2 style="margin: 0 0 10px 0; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
-                            RHOAI-${version}
+                            ${product}-${version}
                             <span style="font-size: 16px; color: #666; font-weight: normal;">(${quarter})</span>
                             <span style="float: right; font-size: 16px; font-weight: normal; color: #666;">
                                 ${releaseTotalFeatures} features, ${releaseTotalPoints} pts total
