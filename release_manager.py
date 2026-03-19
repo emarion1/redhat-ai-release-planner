@@ -404,6 +404,7 @@ def parse_features(issues, ranking):
             "sizing_confidence": sizing_confidence,
             "release_type": release_type,
             "blocked_by": blocked_by,
+            "components": [c["name"] for c in fields.get("components", []) if isinstance(c, dict)],
         }
 
         features.append(feature)
@@ -428,18 +429,84 @@ def _extract_product(scheduled_to):
     return "RHOAI"  # default
 
 
-def _infer_product(feature):
-    """Infer product from labels, summary, or other signals when scheduled_to is absent."""
-    # Check labels for product-prefixed values (e.g., "rhoai-3.4", "rhaiis-3.3")
+def _build_component_affinity(features):
+    """Build a component-to-product affinity map from scheduled features.
+
+    Returns dict mapping component name to dominant product, using only
+    components where >70% of scheduled features belong to one product.
+    """
+    comp_counts = {}  # component -> {product: count}
+    for f in features:
+        scheduled_to = f.get("scheduled_to")
+        if not scheduled_to:
+            continue
+        product = _extract_product(scheduled_to)
+        for comp in f.get("components", []):
+            if comp not in comp_counts:
+                comp_counts[comp] = {}
+            comp_counts[comp][product] = comp_counts[comp].get(product, 0) + 1
+
+    affinity = {}
+    for comp, products in comp_counts.items():
+        total = sum(products.values())
+        if total < 2:
+            continue
+        dominant = max(products, key=products.get)
+        if products[dominant] / total > 0.7:
+            affinity[comp] = dominant
+
+    return affinity
+
+
+# Summary keyword patterns for product detection
+_RHAIIS_KEYWORDS = [
+    "vllm", "infereng", "inference engine", "llm compressor",
+    "speculator", "midstream", "nm-vllm",
+]
+_RHELAI_KEYWORDS = [
+    "rhelai", "rhel ai", "bootc", "instructlab",
+]
+
+
+def _infer_product(feature, component_affinity=None):
+    """Infer product using multiple signals (component affinity, labels, summary keywords).
+
+    Signal priority:
+    1. Labels with explicit product prefix (e.g., "rhoai-3.4")
+    2. Component affinity learned from scheduled features
+    3. Summary text keyword matching
+    4. Default to RHOAI
+    """
+    # 1. Check labels for product-prefixed values
     for label in feature.get("labels", []):
         label_upper = label.upper()
         for product in KNOWN_PRODUCTS:
             if label_upper.startswith(product):
                 return product
 
-    # Check summary text for product mentions
+    # 2. Component affinity (strongest semantic signal)
+    if component_affinity:
+        product_votes = {}
+        for comp in feature.get("components", []):
+            if comp in component_affinity:
+                product = component_affinity[comp]
+                product_votes[product] = product_votes.get(product, 0) + 1
+        if product_votes:
+            # If any non-RHOAI product has votes, prefer it (RHOAI is the default)
+            for p in ["RHAIIS", "RHELAI"]:
+                if p in product_votes:
+                    return p
+            return max(product_votes, key=product_votes.get)
+
+    # 3. Summary keyword matching
+    summary_lower = feature.get("summary", "").lower()
+    if any(kw in summary_lower for kw in _RHAIIS_KEYWORDS):
+        return "RHAIIS"
+    if any(kw in summary_lower for kw in _RHELAI_KEYWORDS):
+        return "RHELAI"
+
+    # 4. Explicit product mention in summary
     summary_upper = feature.get("summary", "").upper()
-    # Check RHAIIS and RHELAI first (more specific), then fall back to RHOAI
     if "RHAIIS" in summary_upper:
         return "RHAIIS"
     if "RHELAI" in summary_upper:
@@ -458,11 +525,14 @@ def group_features_by_release(features):
 
     unscheduled = []
 
+    # Build component affinity from scheduled features (first pass)
+    component_affinity = _build_component_affinity(features)
+
     for feature in features:
         scheduled_to = feature["scheduled_to"]
 
         if not scheduled_to:
-            feature["product"] = _infer_product(feature)
+            feature["product"] = _infer_product(feature, component_affinity)
             unscheduled.append(feature)
             continue
 
