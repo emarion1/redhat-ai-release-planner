@@ -53,6 +53,8 @@ FIELD_STORY_POINTS = "customfield_10836"
 FIELD_TARGET_VERSION = "customfield_10855"
 FIELD_TARGET_END_DATE = "customfield_10015"  # Target end date for planning
 FIELD_RELEASE_TYPE = "customfield_10851"
+FIELD_PRODUCTS = "customfield_10868"       # "Products" (array of options)
+FIELD_PRODUCT = "customfield_10608"        # "Product" (single option)
 
 # Capacity guidelines - loaded from fit predictor model when available,
 # otherwise falls back to hardcoded defaults from PREDICTIVE_RELEASE_CAPACITY_REPORT.md
@@ -171,6 +173,91 @@ def get_plan_feature_ranking(plan_id):
     return {}
 
 
+def discover_product_keys():
+    """Run product-discovery JQL queries to build {feature_key: product} mapping.
+
+    Executes one JQL query per product using JIRA's server-side text search
+    on summary, description, and fixVersion fields.  This is more accurate
+    than local keyword matching because JIRA handles tokenization and field
+    indexing natively.
+
+    Conflict resolution: if a feature appears in multiple product results,
+    fixVersion match wins.  Otherwise the first non-RHOAI product wins
+    (RHOAI is the default, so a feature explicitly matching RHAIIS/RHELAI
+    is more informative).
+    """
+    print("🔍 Running product-discovery JQL queries...")
+    product_keys = {}  # key -> product
+    product_key_source = {}  # key -> "fixVersion" | "text"
+
+    for product in KNOWN_PRODUCTS:
+        jql = (
+            f'project = {PROJECT} AND statusCategory != Done AND '
+            f'(summary ~ "{product}" OR description ~ "{product}" '
+            f'OR fixVersion ~ "{product}")'
+        )
+        try:
+            all_keys = []
+            next_page_token = None
+
+            while True:
+                params = {
+                    "jql": jql,
+                    "fields": "key,fixVersions",
+                    "maxResults": 100
+                }
+                if next_page_token:
+                    params["nextPageToken"] = next_page_token
+
+                response = requests.get(
+                    f"{JIRA_BASE_URL}/rest/api/3/search/jql",
+                    headers=get_jira_headers(),
+                    params=params,
+                    timeout=30
+                )
+
+                if response.status_code != 200:
+                    print(f"  ⚠️  {product} query failed: {response.status_code}")
+                    break
+
+                data = response.json()
+                for issue in data.get("issues", []):
+                    key = issue["key"]
+                    fix_versions = [fv["name"] for fv in issue["fields"].get("fixVersions", [])]
+                    has_fv_match = any(
+                        fv.upper().startswith(product) for fv in fix_versions
+                    )
+                    all_keys.append((key, "fixVersion" if has_fv_match else "text"))
+
+                if data.get("isLast", True) or "nextPageToken" not in data:
+                    break
+                next_page_token = data["nextPageToken"]
+
+            print(f"  {product}: {len(all_keys)} features matched")
+
+            for key, source in all_keys:
+                if key not in product_keys:
+                    product_keys[key] = product
+                    product_key_source[key] = source
+                else:
+                    existing = product_keys[key]
+                    existing_source = product_key_source[key]
+                    # fixVersion match always wins
+                    if source == "fixVersion" and existing_source != "fixVersion":
+                        product_keys[key] = product
+                        product_key_source[key] = source
+                    # Non-RHOAI wins over RHOAI (RHOAI is the default)
+                    elif existing == "RHOAI" and product != "RHOAI":
+                        product_keys[key] = product
+                        product_key_source[key] = source
+
+        except Exception as e:
+            print(f"  ⚠️  {product} discovery failed: {e}")
+
+    print(f"  Total: {len(product_keys)} features with product signals")
+    return product_keys
+
+
 def get_all_features():
     """Get all RHAISTRAT features with status, points, versions"""
     print(f"📥 Querying all {PROJECT} features...")
@@ -184,7 +271,7 @@ def get_all_features():
     while True:
         params = {
             "jql": jql,
-            "fields": f"key,summary,status,priority,issuetype,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},{FIELD_RELEASE_TYPE},labels,issuelinks,components,description",
+            "fields": f"key,summary,status,priority,issuetype,{FIELD_STORY_POINTS},fixVersions,{FIELD_TARGET_VERSION},{FIELD_TARGET_END_DATE},{FIELD_RELEASE_TYPE},{FIELD_PRODUCTS},{FIELD_PRODUCT},labels,issuelinks,components,description",
             "maxResults": max_results
         }
         if next_page_token:
@@ -313,6 +400,28 @@ def parse_features(issues, ranking):
         release_type_field = fields.get(FIELD_RELEASE_TYPE)
         release_type = release_type_field.get("value") if isinstance(release_type_field, dict) else None
 
+        # Extract product field(s) — "Products" (array) and "Product" (single)
+        jira_product = None
+        products_field = fields.get(FIELD_PRODUCTS)  # array of option objects
+        if isinstance(products_field, list) and products_field:
+            for opt in products_field:
+                val = opt.get("value", "") if isinstance(opt, dict) else str(opt)
+                val_upper = val.upper()
+                for p in KNOWN_PRODUCTS:
+                    if p in val_upper:
+                        jira_product = p
+                        break
+                if jira_product:
+                    break
+        if not jira_product:
+            product_field = fields.get(FIELD_PRODUCT)  # single option
+            if isinstance(product_field, dict):
+                val_upper = product_field.get("value", "").upper()
+                for p in KNOWN_PRODUCTS:
+                    if p in val_upper:
+                        jira_product = p
+                        break
+
         # Extract component count and description for complexity scoring
         components = fields.get("components", [])
         component_count = len(components) if isinstance(components, list) else 0
@@ -333,6 +442,7 @@ def parse_features(issues, ranking):
         else:
             description = str(desc_raw)
         feature_status = fields["status"]["name"]
+        jira_status_category = fields["status"].get("statusCategory", {}).get("name", "")  # "To Do", "In Progress", or "Done"
 
         # Count child issues and extract blocked_by from issuelinks
         child_issue_count = 0
@@ -405,6 +515,9 @@ def parse_features(issues, ranking):
             "release_type": release_type,
             "blocked_by": blocked_by,
             "components": [c["name"] for c in fields.get("components", []) if isinstance(c, dict)],
+            "description": description,
+            "jira_product": jira_product,
+            "jira_status_category": jira_status_category,
         }
 
         features.append(feature)
@@ -430,17 +543,33 @@ def _extract_product(scheduled_to):
 
 
 def _build_component_affinity(features):
-    """Build a component-to-product affinity map from scheduled features.
+    """Build a component-to-product affinity map from versioned features.
 
+    Uses fixVersion/target_version product prefixes as ground truth,
+    giving a larger and more accurate training set than scheduled-only.
     Returns dict mapping component name to dominant product, using only
-    components where >70% of scheduled features belong to one product.
+    components where >70% of features belong to one product.
     """
     comp_counts = {}  # component -> {product: count}
     for f in features:
-        scheduled_to = f.get("scheduled_to")
-        if not scheduled_to:
+        # Use fixVersion/target_version as ground truth for training
+        product = None
+        for fv in f.get("fix_versions", []):
+            for p in KNOWN_PRODUCTS:
+                if fv.upper().startswith(p):
+                    product = p
+                    break
+            if product:
+                break
+        if not product and f.get("target_version"):
+            for p in KNOWN_PRODUCTS:
+                if f["target_version"].upper().startswith(p):
+                    product = p
+                    break
+        if not product and f.get("scheduled_to"):
+            product = _extract_product(f["scheduled_to"])
+        if not product:
             continue
-        product = _extract_product(scheduled_to)
         for comp in f.get("components", []):
             if comp not in comp_counts:
                 comp_counts[comp] = {}
@@ -458,33 +587,68 @@ def _build_component_affinity(features):
     return affinity
 
 
-# Summary keyword patterns for product detection
-_RHAIIS_KEYWORDS = [
+# Summary-only keywords (Tier 3 fallback) — high confidence, used only
+# when structured signals (fixVersion, product field, JQL discovery) miss.
+_RHAIIS_SUMMARY_KEYWORDS = [
     "vllm", "infereng", "inference engine", "llm compressor",
     "speculator", "midstream", "nm-vllm",
 ]
-_RHELAI_KEYWORDS = [
+_RHELAI_SUMMARY_KEYWORDS = [
     "rhelai", "rhel ai", "bootc", "instructlab",
 ]
 
 
-def _infer_product(feature, component_affinity=None):
-    """Infer product using multiple signals (component affinity, labels, summary keywords).
+def _infer_product(feature, component_affinity=None, jql_product_keys=None):
+    """Classify a feature's product using a tiered signal hierarchy.
 
-    Signal priority:
-    1. Labels with explicit product prefix (e.g., "rhoai-3.4")
-    2. Component affinity learned from scheduled features
-    3. Summary text keyword matching
-    4. Default to RHOAI
+    Tier 1 — Structured JIRA fields (definitive):
+      1a. fixVersion / target_version with strict product prefix
+      1b. JIRA Product custom field (when populated)
+
+    Tier 2 — JIRA server-side search (high confidence):
+      2. JQL product-discovery lookup (from discover_product_keys())
+
+    Tier 3 — Local heuristics (fallback):
+      3a. Labels with explicit product prefix
+      3b. Component affinity learned from versioned features
+      3c. Summary-only keyword matching
+
+    Tier 4 — Default: RHOAI
+
+    Returns:
+      Tuple of (product, tier) where tier describes the signal source.
     """
-    # 1. Check labels for product-prefixed values
+    # --- Tier 1a: fixVersion / target_version (strict prefix) ---
+    for fv in feature.get("fix_versions", []):
+        fv_upper = fv.upper()
+        for p in KNOWN_PRODUCTS:
+            if fv_upper.startswith(p):
+                return p, "fixVersion"
+    if feature.get("target_version"):
+        tv_upper = feature["target_version"].upper()
+        for p in KNOWN_PRODUCTS:
+            if tv_upper.startswith(p):
+                return p, "target_version"
+
+    # --- Tier 1b: JIRA Product custom field ---
+    jira_product = feature.get("jira_product")
+    if jira_product:
+        return jira_product, "product_field"
+
+    # --- Tier 2: JQL product-discovery lookup ---
+    if jql_product_keys:
+        key = feature.get("key")
+        if key in jql_product_keys:
+            return jql_product_keys[key], "jql_discovery"
+
+    # --- Tier 3a: Labels ---
     for label in feature.get("labels", []):
         label_upper = label.upper()
-        for product in KNOWN_PRODUCTS:
-            if label_upper.startswith(product):
-                return product
+        for p in KNOWN_PRODUCTS:
+            if label_upper.startswith(p):
+                return p, "label"
 
-    # 2. Component affinity (strongest semantic signal)
+    # --- Tier 3b: Component affinity ---
     if component_affinity:
         product_votes = {}
         for comp in feature.get("components", []):
@@ -492,30 +656,23 @@ def _infer_product(feature, component_affinity=None):
                 product = component_affinity[comp]
                 product_votes[product] = product_votes.get(product, 0) + 1
         if product_votes:
-            # If any non-RHOAI product has votes, prefer it (RHOAI is the default)
             for p in ["RHAIIS", "RHELAI"]:
                 if p in product_votes:
-                    return p
-            return max(product_votes, key=product_votes.get)
+                    return p, "component"
+            return max(product_votes, key=product_votes.get), "component"
 
-    # 3. Summary keyword matching
+    # --- Tier 3c: Summary keyword matching (no description scanning) ---
     summary_lower = feature.get("summary", "").lower()
-    if any(kw in summary_lower for kw in _RHAIIS_KEYWORDS):
-        return "RHAIIS"
-    if any(kw in summary_lower for kw in _RHELAI_KEYWORDS):
-        return "RHELAI"
+    if any(kw in summary_lower for kw in _RHAIIS_SUMMARY_KEYWORDS):
+        return "RHAIIS", "summary_keyword"
+    if any(kw in summary_lower for kw in _RHELAI_SUMMARY_KEYWORDS):
+        return "RHELAI", "summary_keyword"
 
-    # 4. Explicit product mention in summary
-    summary_upper = feature.get("summary", "").upper()
-    if "RHAIIS" in summary_upper:
-        return "RHAIIS"
-    if "RHELAI" in summary_upper:
-        return "RHELAI"
-
-    return "RHOAI"
+    # --- Tier 4: Default ---
+    return "RHOAI", "default"
 
 
-def group_features_by_release(features):
+def group_features_by_release(features, jql_product_keys=None):
     """Group features by scheduled release"""
     releases = defaultdict(lambda: {
         "EA1": [],
@@ -525,20 +682,28 @@ def group_features_by_release(features):
 
     unscheduled = []
 
-    # Build component affinity from scheduled features (first pass)
+    # Build component affinity from all versioned features (first pass)
     component_affinity = _build_component_affinity(features)
+
+    # Track classification tiers for diagnostic output
+    tier_counts = {}
 
     for feature in features:
         scheduled_to = feature["scheduled_to"]
 
         if not scheduled_to:
-            feature["product"] = _infer_product(feature, component_affinity)
+            product, tier = _infer_product(feature, component_affinity, jql_product_keys)
+            feature["product"] = product
+            feature["_classification_tier"] = tier
+            tier_counts.setdefault(tier, {})
+            tier_counts[tier][product] = tier_counts[tier].get(product, 0) + 1
             unscheduled.append(feature)
             continue
 
         # Extract product and annotate feature
         product = _extract_product(scheduled_to)
         feature["product"] = product
+        feature["_classification_tier"] = "scheduled"
 
         # Strip all known product prefixes for event parsing
         scheduled_lower = scheduled_to.lower().replace("_", " ")
@@ -571,7 +736,28 @@ def group_features_by_release(features):
             releases[release_key][event].append(feature)
         else:
             # Couldn't parse version - add to unscheduled
+            product, tier = _infer_product(feature, component_affinity, jql_product_keys)
+            feature["product"] = product
+            feature["_classification_tier"] = tier
+            tier_counts.setdefault(tier, {})
+            tier_counts[tier][product] = tier_counts[tier].get(product, 0) + 1
             unscheduled.append(feature)
+
+    # Print classification diagnostic for unscheduled features
+    if tier_counts:
+        print()
+        print("🏷️  Product classification (unscheduled features):")
+        tier_order = ["fixVersion", "target_version", "product_field",
+                      "jql_discovery", "label", "component",
+                      "summary_keyword", "default"]
+        for tier in tier_order:
+            if tier in tier_counts:
+                parts = []
+                for p in KNOWN_PRODUCTS:
+                    count = tier_counts[tier].get(p, 0)
+                    if count:
+                        parts.append(f"{count} {p}")
+                print(f"   {tier:>18s}: {', '.join(parts)}")
 
     return dict(releases), unscheduled
 
@@ -1798,6 +1984,10 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 </div>
             </div>
 
+            <div id="draft-plan-summary">
+                <!-- Dynamic summary populated by JS -->
+            </div>
+
             <div id="draft-plan-display">
                 <!-- Populated by JavaScript -->
             </div>
@@ -2025,13 +2215,16 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
         function sortBucketKeys(keys) {
             const eventOrder = { EA1: 0, EA2: 1, GA: 2 };
+            // RHAIIS ships before RHOAI for the same version (RHOAI depends on RHAIIS)
+            const productOrder = { RHAIIS: 0, RHELAI: 1, RHOAI: 2 };
             return keys.slice().sort((a, b) => {
                 const pa = parseBucketKey(a);
                 const pb = parseBucketKey(b);
-                // Sort by product first, then version, then event
-                if (pa.product !== pb.product) return pa.product.localeCompare(pb.product);
+                // Sort by version first, then product dependency order, then event
                 const verCmp = parseFloat(pa.version) - parseFloat(pb.version);
                 if (verCmp !== 0) return verCmp;
+                const prodCmp = (productOrder[pa.product] || 99) - (productOrder[pb.product] || 99);
+                if (prodCmp !== 0) return prodCmp;
                 return (eventOrder[pa.event] || 0) - (eventOrder[pb.event] || 0);
             });
         }
@@ -2633,6 +2826,121 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             }
         }
 
+        // Render dynamic summary box above the plan
+        function renderDraftSummary() {
+            const container = document.getElementById('draft-plan-summary');
+            if (!container) return;
+
+            const activePlan = rebalancedPlan.plan || {};
+            const bucketKeys = Object.keys(activePlan);
+
+            // Compute stats
+            let totalFeatures = 0, totalPoints = 0, totalEvents = 0;
+            let statusCounts = { conservative: 0, typical: 0, aggressive: 0, maximum: 0, over_capacity: 0 };
+            let productCounts = {};
+            const versionsUsed = new Set();
+
+            for (const bk of bucketKeys) {
+                const bucket = activePlan[bk];
+                if (!bucket || bucket.features.length === 0) continue;
+                totalFeatures += bucket.features.length;
+                totalPoints += bucket.points;
+                totalEvents++;
+                statusCounts[bucket.capacity_status] = (statusCounts[bucket.capacity_status] || 0) + 1;
+                const parsed = parseBucketKey(bk);
+                versionsUsed.add(parsed.version);
+                // Per-product counts
+                bucket.features.forEach(f => {
+                    const p = typeof f === 'object' ? (f.product || 'RHOAI') : 'RHOAI';
+                    productCounts[p] = (productCounts[p] || 0) + 1;
+                });
+            }
+
+            const overflowCount = rebalancedPlan.overflow ? rebalancedPlan.overflow.length : 0;
+            const overflowPts = rebalancedPlan.overflow ? rebalancedPlan.overflow.reduce((s, f) => s + f.points, 0) : 0;
+            const avgUtil = totalEvents > 0 ? Math.round(totalPoints / totalEvents / currentCapacityLimit * 100) : 0;
+
+            // Capacity health bar segments
+            const totalBucketsWithFeatures = totalEvents || 1;
+            const consPct = Math.round((statusCounts.conservative || 0) / totalBucketsWithFeatures * 100);
+            const typPct = Math.round((statusCounts.typical || 0) / totalBucketsWithFeatures * 100);
+            const aggPct = Math.round((statusCounts.aggressive || 0) / totalBucketsWithFeatures * 100);
+            const maxPct = Math.round(((statusCounts.maximum || 0) + (statusCounts.over_capacity || 0)) / totalBucketsWithFeatures * 100);
+
+            // Product breakdown string
+            let productBreakdown = '';
+            if (currentDraftsProduct === 'ALL' && Object.keys(productCounts).length > 1) {
+                const parts = [];
+                for (const p of ['RHAIIS', 'RHELAI', 'RHOAI']) {
+                    if (productCounts[p]) parts.push(p + ': ' + productCounts[p]);
+                }
+                productBreakdown = parts.join(' &middot; ');
+            }
+
+            let html = `
+                <div style="background: white; border-radius: 8px; padding: 18px 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 25px; align-items: center; flex-wrap: wrap; flex: 1;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #667eea;">${totalFeatures}</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Scheduled</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #333;">${totalPoints}</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Total Pts</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #555;">${versionsUsed.size}</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Releases</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #555;">${totalEvents}</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Events</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: ${avgUtil > 90 ? '#dc3545' : avgUtil > 70 ? '#ff8b00' : '#28a745'};">${avgUtil}%</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Avg Utilization</div>
+                        </div>
+            `;
+
+            if (overflowCount > 0) {
+                html += `
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #dc3545;">${overflowCount}</div>
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase;">Overflow</div>
+                        </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                    <div style="flex: 0 0 auto; min-width: 200px;">
+                        <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Event Capacity Distribution</div>
+                        <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #eee;">
+                            <div style="width: ${consPct}%; background: #28a745;" title="Conservative: ${statusCounts.conservative || 0}"></div>
+                            <div style="width: ${typPct}%; background: #90ee90;" title="Typical: ${statusCounts.typical || 0}"></div>
+                            <div style="width: ${aggPct}%; background: #ffc107;" title="Aggressive: ${statusCounts.aggressive || 0}"></div>
+                            <div style="width: ${maxPct}%; background: #dc3545;" title="Maximum/Over: ${(statusCounts.maximum || 0) + (statusCounts.over_capacity || 0)}"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #999; margin-top: 2px;">
+                            <span>🟢 ${statusCounts.conservative || 0}</span>
+                            <span>🟡 ${statusCounts.typical || 0}</span>
+                            <span>🟠 ${statusCounts.aggressive || 0}</span>
+                            <span>🔴 ${(statusCounts.maximum || 0) + (statusCounts.over_capacity || 0)}</span>
+                        </div>
+            `;
+
+            if (productBreakdown) {
+                html += `<div style="font-size: 11px; color: #666; margin-top: 6px;">${productBreakdown}</div>`;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
         // Render draft plan using rebalanced data
         function renderDraftPlan() {
             const container = document.getElementById('draft-plan-display');
@@ -2860,17 +3168,13 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
             }
 
             container.innerHTML = html;
+            renderDraftSummary();
         }
 
         // Initialize draft plan on load
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize rebalancing
-            if (planData.metadata && planData.metadata.splits_applied > 0) {
-                currentPlanMode = 'optimized';
-                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-                const optBtn = document.getElementById('mode-btn-optimized');
-                if (optBtn) optBtn.classList.add('active');
-            }
+            // Always start on baseline mode
+            currentPlanMode = 'baseline';
             orderedFeatures = getOrderedFeatures(currentPlanMode);
             rebalancedPlan = rebalance(orderedFeatures, currentCapacityLimit);
             renderDraftPlan();
@@ -3537,8 +3841,11 @@ def main():
     issues = get_all_features()
     features = parse_features(issues, ranking)
 
+    # Run product-discovery JQL queries
+    jql_product_keys = discover_product_keys()
+
     # Group by release
-    releases, unscheduled = group_features_by_release(features)
+    releases, unscheduled = group_features_by_release(features, jql_product_keys)
 
     # Count features in/not in plan
     total_in_plan = sum(1 for f in features if f['in_plan'])
@@ -3580,11 +3887,17 @@ def main():
             size_name = {13: "XL", 8: "L", 5: "M", 3: "S", 1: "XS"}.get(pts, "?")
             print(f"     {pts} pts ({size_name}): {size_counts[pts]} features")
 
+    # Filter out closed/done features — only open work goes into draft plans
+    open_unscheduled = [f for f in unscheduled if f.get("jira_status_category") != "Done"]
+    closed_count = len(unscheduled) - len(open_unscheduled)
+    if closed_count:
+        print(f"   Filtered out {closed_count} closed/done features from scheduling")
+
     # Generate auto-schedule recommendation
     print()
     print("🤖 Generating recommended release plan for next 2 years...")
     recommended_plan, schedule = auto_schedule_features(
-        unscheduled,
+        open_unscheduled,
         CAPACITY,
         start_version="3.5",
         num_releases=8  # 2 years at quarterly cadence
@@ -3601,13 +3914,13 @@ def main():
                 scheduled_features.add(feat['key'])
                 total_scheduled_points += feat['points']
 
-        unscheduled_remaining = len(unscheduled) - len(scheduled_features)
-        unscheduled_remaining_points = sum(f['points'] for f in unscheduled if f['key'] not in scheduled_features)
+        unscheduled_remaining = len(open_unscheduled) - len(scheduled_features)
+        unscheduled_remaining_points = sum(f['points'] for f in open_unscheduled if f['key'] not in scheduled_features)
 
         print()
         print("=" * 60)
         print("📊 Capacity Planning Summary:")
-        print(f"   Total unscheduled features: {len(unscheduled)}")
+        print(f"   Total open unscheduled features: {len(open_unscheduled)} ({closed_count} closed filtered out)")
         print(f"   Scheduled in plan (3.5-3.12): {len(scheduled_features)} features, {total_scheduled_points} pts")
         print(f"   Remaining unscheduled: {unscheduled_remaining} features, {unscheduled_remaining_points} pts")
         print(f"   (Features with target dates prioritized)")
@@ -3625,7 +3938,7 @@ def main():
     # Generate optimized plan
     print()
     print("🤖 Generating optimized release plan...")
-    optimized_plan_result = generate_optimized_plan(unscheduled, CAPACITY, backlog_analysis['sizing_analysis'])
+    optimized_plan_result = generate_optimized_plan(open_unscheduled, CAPACITY, backlog_analysis['sizing_analysis'])
 
     if optimized_plan_result['split_count'] > 0:
         print(f"   Split {optimized_plan_result['split_count']} large features into smaller deliverables")
