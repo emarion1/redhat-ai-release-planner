@@ -797,87 +797,6 @@ def calculate_release_metrics(release_data):
     return metrics
 
 
-def generate_split_recommendation(feature):
-    """
-    Generate specific splitting recommendations for oversized features
-    Returns detailed split strategy or None if feature shouldn't be split
-    """
-    summary = feature["summary"]
-    summary_lower = summary.lower()
-    points = feature["points"]
-
-    # Check if feature contains multiple concerns
-    has_multiple = any(word in summary_lower for word in ["and", "multiple", "several", "various", "&"])
-
-    if not has_multiple and points < 13:
-        return None
-
-    # Analyze what type of split would work best
-    split_details = []
-
-    # Infrastructure/Integration features
-    if any(word in summary_lower for word in ["infrastructure", "integration", "platform"]):
-        split_details = [
-            {"name": f"Part 1: Core Infrastructure", "points": 8, "phase": "DP"},
-            {"name": f"Part 2: Integration & Testing", "points": 5, "phase": "TP/GA"}
-        ]
-        reason = "Complex infrastructure work - split into core setup and integration phases"
-        suggested_split = "8 pts (core) + 5 pts (integration)"
-
-    # Architecture/Redesign features
-    elif any(word in summary_lower for word in ["architecture", "redesign", "refactor"]):
-        split_details = [
-            {"name": f"Part 1: Design & Foundation", "points": 5, "phase": "DP"},
-            {"name": f"Part 2: Implementation", "points": 8, "phase": "TP/GA"}
-        ]
-        reason = "Architectural work - separate design phase from implementation"
-        suggested_split = "5 pts (design) + 8 pts (implementation)"
-
-    # Migration features
-    elif "migration" in summary_lower:
-        split_details = [
-            {"name": f"Part 1: Migration Framework", "points": 5, "phase": "DP"},
-            {"name": f"Part 2: Data Migration", "points": 5, "phase": "TP"},
-            {"name": f"Part 3: Validation & Cleanup", "points": 3, "phase": "GA"}
-        ]
-        reason = "Migration complexity - split into framework, execution, and validation"
-        suggested_split = "5 pts + 5 pts + 3 pts"
-
-    # Features with "and" - likely multiple concerns
-    elif " and " in summary_lower or " & " in summary_lower:
-        # Try to identify the two parts
-        parts = summary.replace(" and ", "|").replace(" & ", "|").split("|")
-        if len(parts) >= 2:
-            split_details = [
-                {"name": f"Part 1: {parts[0].strip()[:50]}", "points": 8, "phase": "DP/TP"},
-                {"name": f"Part 2: {parts[1].strip()[:50]}", "points": 5, "phase": "TP/GA"}
-            ]
-            reason = "Feature contains multiple concerns - split into separate deliverables"
-            suggested_split = "8 pts (first part) + 5 pts (second part)"
-        else:
-            split_details = [
-                {"name": f"Part 1: Core Functionality", "points": 8, "phase": "DP/TP"},
-                {"name": f"Part 2: Extended Features", "points": 5, "phase": "GA"}
-            ]
-            reason = "Large scope - split into core and extended functionality"
-            suggested_split = "8 pts (core) + 5 pts (extended)"
-
-    # Default split for other large features
-    else:
-        split_details = [
-            {"name": f"Part 1: Core Functionality", "points": 8, "phase": "DP/TP"},
-            {"name": f"Part 2: Refinement & Optimization", "points": 5, "phase": "GA"}
-        ]
-        reason = "Large feature - split into MVP and refinement phases"
-        suggested_split = "8 pts (MVP) + 5 pts (refinement)"
-
-    return {
-        "reason": reason,
-        "suggested_split": suggested_split,
-        "split_details": split_details
-    }
-
-
 def analyze_feature_sizing(features):
     """
     Analyze feature sizing distribution and provide recommendations
@@ -921,18 +840,9 @@ def analyze_feature_sizing(features):
         distribution[size]["features"].append(feature)
         distribution[size]["total_points"] += points
 
-        # Identify oversized features (XL that could be split)
+        # Identify oversized features (XL)
         if points >= 13:
-            summary_lower = feature["summary"].lower()
-            split_recommendation = generate_split_recommendation(feature)
-
-            if split_recommendation:
-                oversized.append({
-                    "feature": feature,
-                    "reason": split_recommendation["reason"],
-                    "suggested_split": split_recommendation["suggested_split"],
-                    "split_details": split_recommendation["split_details"]
-                })
+            oversized.append(feature)
 
     # Calculate percentages
     for size in distribution:
@@ -998,7 +908,7 @@ def generate_optimized_plan(features, capacity, sizing_analysis):
     for feature in features:
         # Check if feature should be split
         should_split = any(
-            rec["feature"]["key"] == feature["key"]
+            rec["key"] == feature["key"]
             for rec in sizing_analysis["oversized"]
         )
 
@@ -3255,63 +3165,30 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 `;
             });
 
-            // Show oversized features that should be split (filtered by product)
+            // Show oversized features (filtered by product)
             let oversizedItems = sizing.oversized || [];
             if (currentAnalysisProduct !== 'ALL') {
                 oversizedItems = oversizedItems.filter(item => {
-                    const f = allFeatures[item.feature.key];
+                    const f = allFeatures[item.key];
                     return f && f.product === currentAnalysisProduct;
                 });
             }
             if (oversizedItems.length > 0) {
                 html += `
-                    <h3 style="margin: 30px 0 15px 0; color: #333;">Features Recommended for Splitting</h3>
+                    <h3 style="margin: 30px 0 15px 0; color: #333;">Oversized Features (XL - 13+ pts)</h3>
                     <p style="color: #666; margin-bottom: 15px;">
-                        The following ${oversizedItems.length} features are large (XL) and contain multiple concerns.
-                        Consider splitting them into smaller, more focused features for faster delivery.
+                        The following ${oversizedItems.length} features are XL (13+ story points).
+                        Consider whether they can be broken into smaller deliverables.
                     </p>
                 `;
 
-                oversizedItems.forEach(item => {
-                    const f = item.feature;
+                oversizedItems.forEach(f => {
                     html += `
                         <div style="padding: 15px; margin: 10px 0; background: #fff8e6; border-left: 4px solid #ff8b00; border-radius: 4px;">
                             <div style="font-weight: 600; color: #333; margin-bottom: 5px;">
                                 ${f.key} <span style="background: #ff8b00; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; margin-left: 5px;">${f.points} pts</span>
                             </div>
-                            <div style="font-size: 13px; color: #666; margin-bottom: 8px;">${f.summary}</div>
-                            <div style="font-size: 12px; color: #555; margin-bottom: 10px;">
-                                <strong>Why split:</strong> ${item.reason}
-                                <br>
-                                <strong>Recommended split:</strong> ${item.suggested_split}
-                            </div>
-                    `;
-
-                    // Show detailed split recommendations
-                    if (item.split_details && item.split_details.length > 0) {
-                        html += `
-                            <div style="background: white; padding: 12px; border-radius: 4px; margin-top: 10px;">
-                                <div style="font-weight: 600; font-size: 11px; color: #ff8b00; margin-bottom: 8px; text-transform: uppercase;">Suggested Feature Breakdown:</div>
-                        `;
-
-                        item.split_details.forEach((part, idx) => {
-                            html += `
-                                <div style="padding: 8px; margin: 5px 0; background: #f9f9f9; border-left: 3px solid #667eea; font-size: 12px;">
-                                    <div style="font-weight: 600; color: #333;">
-                                        ${f.key}-P${idx + 1}: ${part.name}
-                                        <span style="background: #667eea; color: white; padding: 1px 6px; border-radius: 2px; font-size: 10px; margin-left: 5px;">${part.points} pts</span>
-                                        <span style="background: #f0f7ff; color: #0052cc; padding: 1px 6px; border-radius: 2px; font-size: 10px; margin-left: 5px;">${part.phase}</span>
-                                    </div>
-                                </div>
-                            `;
-                        });
-
-                        html += `
-                            </div>
-                        `;
-                    }
-
-                    html += `
+                            <div style="font-size: 13px; color: #666;">${f.summary}</div>
                         </div>
                     `;
                 });
