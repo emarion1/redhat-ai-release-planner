@@ -797,66 +797,6 @@ def calculate_release_metrics(release_data):
     return metrics
 
 
-def analyze_feature_phasing(feature):
-    """
-    Analyze if a feature can be phased across DP/TP/GA
-    Returns: {
-        "phaseable": bool,
-        "recommendation": str,
-        "complexity": str
-    }
-    """
-    summary = feature["summary"].lower()
-    points = feature["points"]
-
-    # Indicators that feature is large/complex enough to phase
-    phase_indicators = [
-        "infrastructure", "architecture", "framework", "integration",
-        "migration", "platform", "ecosystem", "redesign"
-    ]
-
-    # Indicators that feature is atomic (shouldn't be phased)
-    atomic_indicators = [
-        "fix", "bug", "typo", "documentation", "docs",
-        "minor", "small", "adjust", "update config"
-    ]
-
-    has_phase_indicator = any(ind in summary for ind in phase_indicators)
-    has_atomic_indicator = any(ind in summary for ind in atomic_indicators)
-
-    # Determine if phaseable
-    if points >= 8 and has_phase_indicator:
-        return {
-            "phaseable": True,
-            "recommendation": f"Split into phases: DP (basic functionality) → TP (extended features) → GA (production hardening)",
-            "complexity": "High"
-        }
-    elif points >= 8 and not has_atomic_indicator:
-        return {
-            "phaseable": True,
-            "recommendation": f"Consider phasing: DP (core feature) → TP (refinement) → GA (optimization)",
-            "complexity": "Medium"
-        }
-    elif points >= 5 and has_phase_indicator:
-        return {
-            "phaseable": True,
-            "recommendation": f"Potential for DP/TP split, GA for full release",
-            "complexity": "Medium"
-        }
-    elif has_atomic_indicator or points <= 3:
-        return {
-            "phaseable": False,
-            "recommendation": "Deliver as single feature (not complex enough to phase)",
-            "complexity": "Low"
-        }
-    else:
-        return {
-            "phaseable": False,
-            "recommendation": "Deliver in single release event (GA preferred)",
-            "complexity": "Low"
-        }
-
-
 def generate_split_recommendation(feature):
     """
     Generate specific splitting recommendations for oversized features
@@ -1110,35 +1050,14 @@ def analyze_backlog(features):
     Comprehensive backlog analysis
     Returns complete analysis for HTML display
     """
-    # 1. Phasing analysis
-    phasing_results = []
-    phaseable_count = 0
-
-    for feature in features:
-        result = analyze_feature_phasing(feature)
-        if result["phaseable"]:
-            phaseable_count += 1
-        phasing_results.append({
-            "feature": feature,
-            "analysis": result
-        })
-
-    # 2. Sizing analysis
     sizing_analysis = analyze_feature_sizing(features)
 
-    # 3. Optimization insights
     insights = {
-        "phasing": {
-            "total": len(features),
-            "phaseable": phaseable_count,
-            "percentage": round((phaseable_count / len(features) * 100), 1) if features else 0
-        },
         "sizing": sizing_analysis,
         "efficiency_score": calculate_efficiency_score(sizing_analysis)
     }
 
     return {
-        "phasing_results": phasing_results,
         "sizing_analysis": sizing_analysis,
         "insights": insights
     }
@@ -2010,7 +1929,6 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <span class="info-icon" onclick="showInfo('analysis')">ℹ️</span>
                 <p style="margin-top: 10px; font-size: 14px;">
                     Comprehensive analysis of your feature backlog for optimal delivery:
-                    <br>• DP/TP/GA phasing recommendations
                     <br>• Feature sizing distribution and optimization
                     <br>• Delivery efficiency scoring
                     <br>• Optimized release plan based on best practices
@@ -2019,10 +1937,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
             <!-- Navigation within Analysis tab -->
             <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <button onclick="showAnalysisSection('phasing')" class="analysis-nav-btn active" id="btn-phasing">
-                    📋 Phasing Analysis
-                </button>
-                <button onclick="showAnalysisSection('sizing')" class="analysis-nav-btn" id="btn-sizing">
+                <button onclick="showAnalysisSection('sizing')" class="analysis-nav-btn active" id="btn-sizing">
                     📏 Sizing Analysis
                 </button>
                 <button onclick="showAnalysisSection('recommendations')" class="analysis-nav-btn" id="btn-recommendations">
@@ -2033,13 +1948,8 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 </button>
             </div>
 
-            <!-- Section 1: Phasing Analysis -->
-            <div id="analysis-phasing" class="analysis-section">
-                <!-- Populated by JavaScript -->
-            </div>
-
-            <!-- Section 2: Sizing Analysis -->
-            <div id="analysis-sizing" class="analysis-section" style="display:none;">
+            <!-- Section 1: Sizing Analysis -->
+            <div id="analysis-sizing" class="analysis-section">
                 <!-- Populated by JavaScript -->
             </div>
 
@@ -2779,16 +2689,6 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 'analysis': `
                     <h3>About Feature Analysis</h3>
                     <div class="info-card">
-                        <h4>Phasing Analysis (DP/TP/GA)</h4>
-                        <p>Evaluates which features are large or complex enough to benefit from phased delivery:</p>
-                        <ul>
-                            <li><strong>Dev Preview (DP):</strong> Early release for initial customer feedback</li>
-                            <li><strong>Tech Preview (TP):</strong> Refinement based on feedback</li>
-                            <li><strong>General Availability (GA):</strong> Production-ready release</li>
-                        </ul>
-                        <p>Features with 8+ story points and appropriate complexity are candidates for phasing.</p>
-                    </div>
-                    <div class="info-card">
                         <h4>Sizing Distribution Analysis</h4>
                         <p>Shows breakdown of features by size (XS/S/M/L/XL) and compares to ideal distribution:</p>
                         <ul>
@@ -3196,95 +3096,13 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
         // Render all analysis sections
         function renderAnalysis() {
             if (!backlogAnalysis || !backlogAnalysis.insights) {
-                document.getElementById('analysis-phasing').innerHTML = '<p>No analysis data available</p>';
+                document.getElementById('analysis-sizing').innerHTML = '<p>No analysis data available</p>';
                 return;
             }
 
-            renderPhasingAnalysis();
             renderSizingAnalysis();
             renderRecommendations();
             renderOptimizedPlan();
-        }
-
-        // Render Phasing Analysis section
-        function renderPhasingAnalysis() {
-            const container = document.getElementById('analysis-phasing');
-
-            // Filter phasing results by product
-            let results = backlogAnalysis.phasing_results || [];
-            if (currentAnalysisProduct !== 'ALL') {
-                results = results.filter(r => {
-                    const f = allFeatures[r.feature.key];
-                    return f && f.product === currentAnalysisProduct;
-                });
-            }
-            const total = results.length;
-            const phaseableCount = results.filter(r => r.analysis.phaseable).length;
-            const percentage = total > 0 ? Math.round(phaseableCount / total * 100) : 0;
-
-            let html = `
-                <h2 style="margin: 0 0 20px 0; color: #333;">DP/TP/GA Phasing Analysis</h2>
-
-                <div style="margin: 20px 0;">
-                    <div class="metric-box" style="background: #e7f3ff;">
-                        <div class="metric-box-value" style="color: #0052cc;">${total}</div>
-                        <div class="metric-box-label">Total Features</div>
-                    </div>
-                    <div class="metric-box" style="background: #f0fff4;">
-                        <div class="metric-box-value" style="color: #28a745;">${phaseableCount}</div>
-                        <div class="metric-box-label">Phaseable Features</div>
-                    </div>
-                    <div class="metric-box" style="background: #fff8e6;">
-                        <div class="metric-box-value" style="color: #ff8b00;">${percentage}%</div>
-                        <div class="metric-box-label">Phasing Potential</div>
-                    </div>
-                </div>
-
-                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin: 0 0 15px 0; color: #555; font-size: 16px;">What This Means</h3>
-                    <p style="margin: 0; line-height: 1.6; color: #666;">
-                        <strong>${phaseableCount}</strong> features (${percentage}%) are large or complex enough to benefit from phased delivery across DP → TP → GA.
-                        This allows for:
-                        <br>• Earlier customer feedback with Dev Preview (DP)
-                        <br>• Iterative refinement in Tech Preview (TP)
-                        <br>• Production-ready release in General Availability (GA)
-                    </p>
-                </div>
-
-                <h3 style="margin: 20px 0 15px 0; color: #333;">Feature-Level Phasing Recommendations</h3>
-                <div style="max-height: 400px; overflow-y: auto;">
-            `;
-
-            // Show sample of phaseable features
-            const phaseableFeatures = results
-                .filter(r => r.analysis.phaseable)
-                .slice(0, 20);  // Show first 20
-
-            phaseableFeatures.forEach(result => {
-                const f = result.feature;
-                const analysis = result.analysis;
-
-                html += `
-                    <div style="padding: 15px; margin: 10px 0; border-left: 4px solid #667eea; background: #f9f9f9; border-radius: 4px;">
-                        <div style="font-weight: 600; color: #333; margin-bottom: 5px;">
-                            ${f.key} <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; margin-left: 5px;">${f.points} pts</span>
-                        </div>
-                        <div style="font-size: 13px; color: #666; margin-bottom: 8px;">${f.summary}</div>
-                        <div style="font-size: 12px; color: #555; background: white; padding: 8px; border-radius: 3px;">
-                            <strong>💡 Recommendation:</strong> ${analysis.recommendation}
-                        </div>
-                    </div>
-                `;
-            });
-
-            if (phaseableFeatures.length < phaseableCount) {
-                const remaining = phaseableCount - phaseableFeatures.length;
-                html += `<p style="margin: 15px 0; color: #666; font-style: italic;">...and ${remaining} more phaseable features</p>`;
-            }
-
-            html += `</div>`;
-
-            container.innerHTML = html;
         }
 
         // Render Sizing Analysis section
@@ -3505,7 +3323,6 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                     <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: #555;">
                         <li>Faster feature delivery (smaller features complete quicker)</li>
                         <li>Better capacity planning (more predictable velocity)</li>
-                        <li>Improved DP/TP/GA phasing opportunities</li>
                         <li>Reduced risk (smaller changes are less risky)</li>
                         <li>More frequent customer feedback</li>
                     </ul>
@@ -3755,7 +3572,6 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
                 <h4>🔬 Feature Analysis</h4>
                 <p>Comprehensive backlog analysis and optimization</p>
                 <ul>
-                    <li><strong>Phasing Analysis:</strong> Which features can be split across DP/TP/GA</li>
                     <li><strong>Sizing Distribution:</strong> Breakdown of feature sizes with recommendations</li>
                     <li><strong>Recommendations:</strong> Specific suggestions for splitting oversized features</li>
                     <li><strong>Optimized Plan:</strong> 2-year plan with recommended optimizations applied</li>
@@ -3932,7 +3748,6 @@ def main():
     backlog_analysis = analyze_backlog(features)
 
     print(f"   Features analyzed: {len(features)}")
-    print(f"   Phaseable features (DP/TP/GA): {backlog_analysis['insights']['phasing']['phaseable']} ({backlog_analysis['insights']['phasing']['percentage']}%)")
     print(f"   Delivery efficiency score: {backlog_analysis['insights']['efficiency_score']}/100")
 
     # Generate optimized plan
