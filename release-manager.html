@@ -450,6 +450,18 @@
             text-transform: uppercase;
             color: #666;
             border-bottom: 2px solid #dee2e6;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .feature-table th:hover {
+            background: #e9ecef;
+        }
+
+        .sort-indicator {
+            margin-left: 4px;
+            font-size: 10px;
+            color: #999;
         }
 
         .feature-table td {
@@ -21051,6 +21063,20 @@
       "points": 37,
       "capacity_status": "typical"
     },
+    "RHELAI:3.5-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1340",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHELAI",
+          "blocked_by": []
+        }
+      ],
+      "points": 3,
+      "capacity_status": "conservative"
+    },
     "3.5-EA1": {
       "features": [
         {
@@ -23573,20 +23599,6 @@
       ],
       "points": 80.0,
       "capacity_status": "aggressive"
-    },
-    "RHELAI:3.5-EA1": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1340",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHELAI",
-          "blocked_by": []
-        }
-      ],
-      "points": 3,
-      "capacity_status": "conservative"
     }
   },
   "optimized": {
@@ -23747,6 +23759,20 @@
       ],
       "points": 37,
       "capacity_status": "typical"
+    },
+    "RHELAI:3.5-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1340",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHELAI",
+          "blocked_by": []
+        }
+      ],
+      "points": 3,
+      "capacity_status": "conservative"
     },
     "3.5-EA1": {
       "features": [
@@ -26594,20 +26620,6 @@
       ],
       "points": 78.0,
       "capacity_status": "aggressive"
-    },
-    "RHELAI:3.5-EA1": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1340",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHELAI",
-          "blocked_by": []
-        }
-      ],
-      "points": 3,
-      "capacity_status": "conservative"
     }
   },
   "metadata": {
@@ -124380,6 +124392,17 @@
       "points": 37,
       "capacity_status": "typical"
     },
+    "RHELAI:3.5-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1340",
+          "summary": "Add Callback Mechanism to InstructLab Training Library",
+          "points": 3
+        }
+      ],
+      "points": 3,
+      "capacity_status": "conservative"
+    },
     "3.5-EA1": {
       "features": [
         {
@@ -126103,17 +126126,6 @@
       ],
       "points": 78.0,
       "capacity_status": "aggressive"
-    },
-    "RHELAI:3.5-EA1": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1340",
-          "summary": "Add Callback Mechanism to InstructLab Training Library",
-          "points": 3
-        }
-      ],
-      "points": 3,
-      "capacity_status": "conservative"
     }
   },
   "split_count": 37
@@ -126657,6 +126669,38 @@
             renderReleaseFitTab();
         }
 
+        // --- Table sorting ---
+        function sortTable(th, colIndex) {
+            const table = th.closest('table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const currentDir = th.getAttribute('data-sort-dir');
+            const ascending = currentDir !== 'asc';
+
+            // Clear indicators on sibling headers
+            th.closest('tr').querySelectorAll('th .sort-indicator').forEach(s => s.textContent = '');
+            th.closest('tr').querySelectorAll('th').forEach(h => h.removeAttribute('data-sort-dir'));
+
+            th.setAttribute('data-sort-dir', ascending ? 'asc' : 'desc');
+            th.querySelector('.sort-indicator').textContent = ascending ? ' ▲' : ' ▼';
+
+            rows.sort((a, b) => {
+                const aText = a.cells[colIndex].textContent.trim();
+                const bText = b.cells[colIndex].textContent.trim();
+                // Points column (index 4): numeric sort
+                if (colIndex === 4) {
+                    return ascending
+                        ? parseFloat(aText) - parseFloat(bText)
+                        : parseFloat(bText) - parseFloat(aText);
+                }
+                return ascending
+                    ? aText.localeCompare(bText)
+                    : bText.localeCompare(aText);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
         // --- Rebalancing engine ---
 
         // Parse bucket key: "3.5-EA1" or "RHAIIS:3.5-EA1"
@@ -126667,7 +126711,9 @@
                 product = parts[0];
                 versionEvent = parts[1];
             }
-            const [version, event] = versionEvent.split('-');
+            const lastDash = versionEvent.lastIndexOf('-');
+            const version = versionEvent.substring(0, lastDash);
+            const event = versionEvent.substring(lastDash + 1);
             return { product, version, event, versionEvent };
         }
 
@@ -126950,11 +126996,11 @@
                             <table class="feature-table">
                                 <thead>
                                     <tr>
-                                        <th>Key</th>
-                                        <th>Summary</th>
-                                        <th>Status</th>
-                                        <th>Priority</th>
-                                        <th>Points</th>
+                                        <th onclick="sortTable(this, 0)">Key<span class="sort-indicator"></span></th>
+                                        <th onclick="sortTable(this, 1)">Summary<span class="sort-indicator"></span></th>
+                                        <th onclick="sortTable(this, 2)">Status<span class="sort-indicator"></span></th>
+                                        <th onclick="sortTable(this, 3)">Priority<span class="sort-indicator"></span></th>
+                                        <th onclick="sortTable(this, 4)">Points<span class="sort-indicator"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
