@@ -48,7 +48,7 @@ jobs:
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
         run: |
-          python3 release_manager.py
+          python3 release_manager.py --refresh
 
       - name: Commit and push if changes
         uses: stefanzweifel/git-auto-commit-action@v5
