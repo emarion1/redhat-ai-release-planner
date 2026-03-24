@@ -20917,6 +20917,140 @@
 ];
         const planData = {
   "baseline": {
+    "RHAIIS:3.5-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-223",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": [
+            "AIPCC-3365"
+          ]
+        },
+        {
+          "key": "RHAISTRAT-254",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-274",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-240",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-239",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-262",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-301",
+          "points": 13,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1318",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1377",
+          "points": 8,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        }
+      ],
+      "points": 52,
+      "capacity_status": "aggressive"
+    },
+    "RHAIIS:3.5-EA2": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1385",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1386",
+          "points": 5,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1389",
+          "points": 13,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1390",
+          "points": 8,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-1242",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        },
+        {
+          "key": "RHAISTRAT-41",
+          "points": 3,
+          "split": false,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": []
+        }
+      ],
+      "points": 37,
+      "capacity_status": "typical"
+    },
     "3.5-EA1": {
       "features": [
         {
@@ -23453,7 +23587,9 @@
       ],
       "points": 3,
       "capacity_status": "conservative"
-    },
+    }
+  },
+  "optimized": {
     "RHAIIS:3.5-EA1": {
       "features": [
         {
@@ -23507,12 +23643,24 @@
           "blocked_by": []
         },
         {
-          "key": "RHAISTRAT-301",
-          "points": 13,
-          "split": false,
+          "key": "RHAISTRAT-301-P1",
+          "points": 8,
+          "split": true,
           "release_type": null,
           "product": "RHAIIS",
-          "blocked_by": []
+          "blocked_by": [],
+          "split_from": "RHAISTRAT-301",
+          "split_part": null
+        },
+        {
+          "key": "RHAISTRAT-301-P2",
+          "points": 5,
+          "split": true,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": [],
+          "split_from": "RHAISTRAT-301",
+          "split_part": null
         },
         {
           "key": "RHAISTRAT-1318",
@@ -23553,12 +23701,24 @@
           "blocked_by": []
         },
         {
-          "key": "RHAISTRAT-1389",
-          "points": 13,
-          "split": false,
+          "key": "RHAISTRAT-1389-P1",
+          "points": 8,
+          "split": true,
           "release_type": null,
           "product": "RHAIIS",
-          "blocked_by": []
+          "blocked_by": [],
+          "split_from": "RHAISTRAT-1389",
+          "split_part": null
+        },
+        {
+          "key": "RHAISTRAT-1389-P2",
+          "points": 5,
+          "split": true,
+          "release_type": null,
+          "product": "RHAIIS",
+          "blocked_by": [],
+          "split_from": "RHAISTRAT-1389",
+          "split_part": null
         },
         {
           "key": "RHAISTRAT-1390",
@@ -23587,9 +23747,7 @@
       ],
       "points": 37,
       "capacity_status": "typical"
-    }
-  },
-  "optimized": {
+    },
     "3.5-EA1": {
       "features": [
         {
@@ -26450,164 +26608,6 @@
       ],
       "points": 3,
       "capacity_status": "conservative"
-    },
-    "RHAIIS:3.5-EA1": {
-      "features": [
-        {
-          "key": "RHAISTRAT-223",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": [
-            "AIPCC-3365"
-          ]
-        },
-        {
-          "key": "RHAISTRAT-254",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-274",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-240",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-239",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-262",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-301-P1",
-          "points": 8,
-          "split": true,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": [],
-          "split_from": "RHAISTRAT-301",
-          "split_part": null
-        },
-        {
-          "key": "RHAISTRAT-301-P2",
-          "points": 5,
-          "split": true,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": [],
-          "split_from": "RHAISTRAT-301",
-          "split_part": null
-        },
-        {
-          "key": "RHAISTRAT-1318",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-1377",
-          "points": 8,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        }
-      ],
-      "points": 52,
-      "capacity_status": "aggressive"
-    },
-    "RHAIIS:3.5-EA2": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1385",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-1386",
-          "points": 5,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-1389-P1",
-          "points": 8,
-          "split": true,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": [],
-          "split_from": "RHAISTRAT-1389",
-          "split_part": null
-        },
-        {
-          "key": "RHAISTRAT-1389-P2",
-          "points": 5,
-          "split": true,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": [],
-          "split_from": "RHAISTRAT-1389",
-          "split_part": null
-        },
-        {
-          "key": "RHAISTRAT-1390",
-          "points": 8,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-1242",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        },
-        {
-          "key": "RHAISTRAT-41",
-          "points": 3,
-          "split": false,
-          "release_type": null,
-          "product": "RHAIIS",
-          "blocked_by": []
-        }
-      ],
-      "points": 37,
-      "capacity_status": "typical"
     }
   },
   "metadata": {
@@ -124283,6 +124283,103 @@
         // Optimized plan data with full feature info (kept for analysis tab)
         const optimizedPlanData = {
   "plan": {
+    "RHAIIS:3.5-EA1": {
+      "features": [
+        {
+          "key": "RHAISTRAT-223",
+          "summary": "[GA] Google TPU Support",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-254",
+          "summary": "Optimisation of NVIDIA RTX PRO 6000 Blackwell (sm_120), cc 12.0 GPUs in RHAIIS",
+          "points": 3
+        },
+        {
+          "key": "RHAISTRAT-274",
+          "summary": "Qualcomm AI 100 Ultra accelerator support",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-240",
+          "summary": "Non-ray pipeline parallel support in vLLM",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-239",
+          "summary": "[Scope] Define an API in the midstream nm-vllm-ent to expose the configuration details to Crucible for 3rd party model validation",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-262",
+          "summary": "Cluster-Scale MoE",
+          "points": 3
+        },
+        {
+          "key": "RHAISTRAT-301-P1",
+          "summary": "Dynamic LoRA Adapter Loading & Basic Intelligent Routing for... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-301-P2",
+          "summary": "Dynamic LoRA Adapter Loading & Basic Intelligent Routing for... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1318",
+          "summary": "Initial Prototype of vLLM attention backend for matrix-free SVD ",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1377",
+          "summary": "[DP] RHAII MaaS on xKS",
+          "points": 8
+        }
+      ],
+      "points": 52,
+      "capacity_status": "aggressive"
+    },
+    "RHAIIS:3.5-EA2": {
+      "features": [
+        {
+          "key": "RHAISTRAT-1385",
+          "summary": "CLONE - [RHAIIS 3.3.1] BART plugin inclusion in RHAIIS",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1386",
+          "summary": "New custom model support (bert with classification)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1389-P1",
+          "summary": "AMD MI350P PCIe support... (Part 1: Core)",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1389-P2",
+          "summary": "AMD MI350P PCIe support... (Part 2: Extended)",
+          "points": 5
+        },
+        {
+          "key": "RHAISTRAT-1390",
+          "summary": "vLLM certified for MetaX accelerator",
+          "points": 8
+        },
+        {
+          "key": "RHAISTRAT-1242",
+          "summary": "vLLM-Omni Tracker",
+          "points": 3
+        },
+        {
+          "key": "RHAISTRAT-41",
+          "summary": "Add embedding models (embeddinggemma-300m, nomic, Qwen3) to registry.redhat.io",
+          "points": 3
+        }
+      ],
+      "points": 37,
+      "capacity_status": "typical"
+    },
     "3.5-EA1": {
       "features": [
         {
@@ -126017,103 +126114,6 @@
       ],
       "points": 3,
       "capacity_status": "conservative"
-    },
-    "RHAIIS:3.5-EA1": {
-      "features": [
-        {
-          "key": "RHAISTRAT-223",
-          "summary": "[GA] Google TPU Support",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-254",
-          "summary": "Optimisation of NVIDIA RTX PRO 6000 Blackwell (sm_120), cc 12.0 GPUs in RHAIIS",
-          "points": 3
-        },
-        {
-          "key": "RHAISTRAT-274",
-          "summary": "Qualcomm AI 100 Ultra accelerator support",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-240",
-          "summary": "Non-ray pipeline parallel support in vLLM",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-239",
-          "summary": "[Scope] Define an API in the midstream nm-vllm-ent to expose the configuration details to Crucible for 3rd party model validation",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-262",
-          "summary": "Cluster-Scale MoE",
-          "points": 3
-        },
-        {
-          "key": "RHAISTRAT-301-P1",
-          "summary": "Dynamic LoRA Adapter Loading & Basic Intelligent Routing for... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-301-P2",
-          "summary": "Dynamic LoRA Adapter Loading & Basic Intelligent Routing for... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1318",
-          "summary": "Initial Prototype of vLLM attention backend for matrix-free SVD ",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1377",
-          "summary": "[DP] RHAII MaaS on xKS",
-          "points": 8
-        }
-      ],
-      "points": 52,
-      "capacity_status": "aggressive"
-    },
-    "RHAIIS:3.5-EA2": {
-      "features": [
-        {
-          "key": "RHAISTRAT-1385",
-          "summary": "CLONE - [RHAIIS 3.3.1] BART plugin inclusion in RHAIIS",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1386",
-          "summary": "New custom model support (bert with classification)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1389-P1",
-          "summary": "AMD MI350P PCIe support... (Part 1: Core)",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1389-P2",
-          "summary": "AMD MI350P PCIe support... (Part 2: Extended)",
-          "points": 5
-        },
-        {
-          "key": "RHAISTRAT-1390",
-          "summary": "vLLM certified for MetaX accelerator",
-          "points": 8
-        },
-        {
-          "key": "RHAISTRAT-1242",
-          "summary": "vLLM-Omni Tracker",
-          "points": 3
-        },
-        {
-          "key": "RHAISTRAT-41",
-          "summary": "Add embedding models (embeddinggemma-300m, nomic, Qwen3) to registry.redhat.io",
-          "points": 3
-        }
-      ],
-      "points": 37,
-      "capacity_status": "typical"
     }
   },
   "split_count": 37
