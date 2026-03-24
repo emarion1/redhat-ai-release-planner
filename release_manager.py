@@ -5,16 +5,20 @@ Multi-product release tracking and capacity planning for RHOAI, RHAIIS, and RHEL
 
 Usage:
     export JIRA_TOKEN='your-token'
-    python3 release_manager.py
+    python3 release_manager.py              # uses cached JIRA data (4h TTL)
+    python3 release_manager.py --refresh    # force fresh JIRA queries
+    python3 release_manager.py --cache-ttl 1  # 1-hour TTL
 
 Opens release-manager.html in browser
 """
 
+import argparse
 import base64
 import json
 import os
 import re
 import sys
+import time
 import requests
 from datetime import datetime
 from collections import defaultdict
@@ -99,6 +103,43 @@ def get_jira_headers():
     }
 
 
+# ---------------------------------------------------------------------------
+# JIRA Data Caching
+# ---------------------------------------------------------------------------
+
+# Module-level cache settings (overridden by CLI args in main())
+_cache_dir = ".jira_cache"
+_cache_ttl_seconds = 4 * 3600  # 4 hours
+_cache_refresh = False
+
+
+def _load_cache(cache_path, ttl_seconds=None):
+    """Load data from a JSON cache file if it exists and is fresh.
+
+    Returns (data, age_seconds) on hit, or (None, None) on miss.
+    """
+    if ttl_seconds is None:
+        ttl_seconds = _cache_ttl_seconds
+    try:
+        if not os.path.exists(cache_path):
+            return None, None
+        with open(cache_path, "r") as f:
+            cached = json.load(f)
+        age = time.time() - cached["timestamp"]
+        if age < ttl_seconds:
+            return cached["data"], age
+    except (json.JSONDecodeError, KeyError, OSError):
+        pass
+    return None, None
+
+
+def _save_cache(cache_path, data):
+    """Write data to a JSON cache file, creating directories as needed."""
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with open(cache_path, "w") as f:
+        json.dump({"timestamp": time.time(), "data": data}, f)
+
+
 def get_plan_feature_ranking():
     """Get feature ranking from JIRA Advanced Roadmaps plan.
 
@@ -109,6 +150,15 @@ def get_plan_feature_ranking():
     Returns:
         Dict mapping issue key (e.g. 'RHAISTRAT-317') to rank number (1-based).
     """
+    cache_path = os.path.join(_cache_dir, "plan_ranking.json")
+
+    if not _cache_refresh:
+        cached, age = _load_cache(cache_path)
+        if cached is not None:
+            mins = int(age / 60)
+            print(f"📊 Using cached plan ranking ({len(cached)} features, cached {mins} minutes ago)")
+            return cached
+
     print(f"📊 Fetching feature ranking from Advanced Roadmaps plan {PLAN_ID}...")
 
     try:
@@ -139,6 +189,7 @@ def get_plan_feature_ranking():
                 ranking[full_key] = idx
 
         print(f"✅ Retrieved ranking for {len(ranking)} features from plan")
+        _save_cache(cache_path, ranking)
         return ranking
 
     except Exception as e:
@@ -160,6 +211,15 @@ def discover_product_keys():
     (RHOAI is the default, so a feature explicitly matching RHAIIS/RHELAI
     is more informative).
     """
+    cache_path = os.path.join(_cache_dir, "product_discovery.json")
+
+    if not _cache_refresh:
+        cached, age = _load_cache(cache_path)
+        if cached is not None:
+            mins = int(age / 60)
+            print(f"🔍 Using cached product discovery ({len(cached)} keys, cached {mins} minutes ago)")
+            return cached
+
     print("🔍 Running product-discovery JQL queries...")
     product_keys = {}  # key -> product
     product_key_source = {}  # key -> "fixVersion" | "text"
@@ -229,11 +289,21 @@ def discover_product_keys():
             print(f"  ⚠️  {product} discovery failed: {e}")
 
     print(f"  Total: {len(product_keys)} features with product signals")
+    _save_cache(cache_path, product_keys)
     return product_keys
 
 
 def get_all_features():
     """Get all RHAISTRAT features with status, points, versions"""
+    cache_path = os.path.join(_cache_dir, "all_features.json")
+
+    if not _cache_refresh:
+        cached, age = _load_cache(cache_path)
+        if cached is not None:
+            mins = int(age / 60)
+            print(f"📥 Using cached features ({len(cached)} issues, cached {mins} minutes ago)")
+            return cached
+
     print(f"📥 Querying all {PROJECT} features...")
 
     jql = f"project = {PROJECT} AND type IN (Feature, Initiative, Epic, Story)"
@@ -274,6 +344,7 @@ def get_all_features():
         next_page_token = data["nextPageToken"]
 
     print(f"✅ Retrieved {len(all_issues)} total features")
+    _save_cache(cache_path, all_issues)
     return all_issues
 
 
@@ -3490,6 +3561,31 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 
 def main():
     """Main execution"""
+    global _cache_dir, _cache_ttl_seconds, _cache_refresh
+
+    parser = argparse.ArgumentParser(
+        description="Red Hat AI Products Release Planner"
+    )
+    parser.add_argument(
+        "--refresh", action="store_true",
+        help="Ignore cache and fetch fresh data from JIRA"
+    )
+    parser.add_argument(
+        "--cache-dir", default=".jira_cache",
+        help="Cache directory (default: .jira_cache/)"
+    )
+    parser.add_argument(
+        "--cache-ttl", type=float, default=4,
+        help="Cache TTL in hours (default: 4)"
+    )
+    args = parser.parse_args()
+
+    _cache_dir = args.cache_dir
+    _cache_ttl_seconds = args.cache_ttl * 3600
+    _cache_refresh = args.refresh
+
+    pipeline_start = time.time()
+
     print("=" * 70)
     print("Red Hat AI Products Release Planner")
     print("=" * 70)
@@ -3627,12 +3723,14 @@ def main():
 
     print(f"✅ Created: {output_file}")
     print()
+    elapsed = time.time() - pipeline_start
     print("=" * 70)
     print("Next steps:")
     print("  1. Open release-manager.html in your browser")
     print("  2. Use 'Draft Release Plans' tab to view AI-recommended roadmaps")
     print("  3. Use 'Track Current Releases' tab to monitor progress")
     print("=" * 70)
+    print(f"\nPipeline completed in {elapsed:.1f}s")
 
 
 if __name__ == "__main__":

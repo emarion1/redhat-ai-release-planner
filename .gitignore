@@ -36,3 +36,6 @@ Thumbs.db
 # JIRA exports (query fresh data instead)
 jira_*.json
 *.csv
+
+# JIRA data cache (regenerated on each run)
+.jira_cache/
