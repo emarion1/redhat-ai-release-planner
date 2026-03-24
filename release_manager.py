@@ -45,8 +45,8 @@ JIRA_BASE_URL = "https://redhat.atlassian.net"
 JIRA_TOKEN = os.environ.get("JIRA_TOKEN")
 JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
 PROJECT = "RHAISTRAT"
-PLAN_NAME = "RHOAI Feature Planning and Tracking"
-PLAN_VIEW = "Outcomes & Features (Jeff's View)"
+PLAN_ID = 625          # Advanced Roadmaps plan: "RHOAI Feature Planning and Tracking"
+SCENARIO_ID = 623      # Active scenario within the plan
 
 # JIRA Custom Fields (Atlassian Cloud IDs)
 FIELD_STORY_POINTS = "customfield_10836"
@@ -99,73 +99,47 @@ def get_jira_headers():
     }
 
 
-def get_jira_plan_id():
-    """Get plan ID for 'RHOAI Feature Planning and Tracking'"""
-    print(f"🔍 Searching for JIRA Plan: '{PLAN_NAME}'...")
+def get_plan_feature_ranking():
+    """Get feature ranking from JIRA Advanced Roadmaps plan.
 
-    # Try Advanced Roadmaps API endpoints
-    endpoints = [
-        "/rest/jpo/1.0/plan",
-        "/rest/portfolio/1.0/plan",
-        "/rest/teams/1.0/plan/search"
-    ]
+    Uses the backlog/compact endpoint to fetch all issues in the plan with
+    their lexoRank values.  Issues are sorted by lexoRank to produce a
+    sequential ranking (1, 2, 3 …).
 
-    for endpoint in endpoints:
-        try:
-            response = requests.get(
-                f"{JIRA_BASE_URL}{endpoint}",
-                headers=get_jira_headers(),
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                print(f"✅ Found plans via {endpoint}")
-
-                # Search for matching plan name
-                plans = data if isinstance(data, list) else data.get("values", [])
-                for plan in plans:
-                    if PLAN_NAME.lower() in plan.get("title", "").lower():
-                        plan_id = plan.get("id")
-                        print(f"✅ Found plan ID: {plan_id}")
-                        return plan_id
-
-        except Exception as e:
-            print(f"  ⚠️ {endpoint} not accessible: {e}")
-            continue
-
-    print(f"⚠️  Could not find plan via API")
-    return None
-
-
-def get_plan_feature_ranking(plan_id):
-    """Get feature ranking from JIRA Plan"""
-    if not plan_id:
-        return {}
-
-    print(f"📊 Fetching feature ranking from plan {plan_id}...")
+    Returns:
+        Dict mapping issue key (e.g. 'RHAISTRAT-317') to rank number (1-based).
+    """
+    print(f"📊 Fetching feature ranking from Advanced Roadmaps plan {PLAN_ID}...")
 
     try:
-        # Try to get issues from plan in ranked order
-        response = requests.get(
-            f"{JIRA_BASE_URL}/rest/jpo/1.0/plan/{plan_id}/issue",
+        response = requests.post(
+            f"{JIRA_BASE_URL}/rest/jpo/1.0/backlog/compact",
             headers=get_jira_headers(),
-            timeout=30
+            params={"operation": "getBacklogCompact"},
+            json={"planId": PLAN_ID, "scenarioId": SCENARIO_ID},
+            timeout=30,
         )
 
-        if response.status_code == 200:
-            data = response.json()
-            issues = data if isinstance(data, list) else data.get("issues", [])
+        if response.status_code != 200:
+            print(f"  ⚠️  backlog/compact returned {response.status_code}")
+            return {}
 
-            # Create ranking dict: {issue_key: rank_number}
-            ranking = {}
-            for idx, issue in enumerate(issues, start=1):
-                key = issue.get("key") or issue.get("issueKey")
-                if key:
-                    ranking[key] = idx
+        data = response.json()
+        issues = data.get("issues", [])
 
-            print(f"✅ Retrieved ranking for {len(ranking)} features")
-            return ranking
+        # Sort by lexoRank (lexicographic string comparison preserves order)
+        issues.sort(key=lambda x: x.get("jiraValues", {}).get("lexoRank", "zzz"))
+
+        # Build ranking dict: {RHAISTRAT-N: rank}
+        ranking = {}
+        for idx, iss in enumerate(issues, start=1):
+            key_num = iss.get("issueKey")
+            if key_num is not None:
+                full_key = f"{PROJECT}-{key_num}"
+                ranking[full_key] = idx
+
+        print(f"✅ Retrieved ranking for {len(ranking)} features from plan")
+        return ranking
 
     except Exception as e:
         print(f"⚠️  Could not get plan ranking: {e}")
@@ -1714,7 +1688,7 @@ def generate_html(features, releases, unscheduled, capacity, recommended_plan=No
 <body>
     <div class="header">
         <h1>Red Hat AI Products Release Planner</h1>
-        <p>Multi-product release tracking and capacity planning | Data from JIRA Plan: {PLAN_NAME}</p>
+        <p>Multi-product release tracking and capacity planning | Data from JIRA Advanced Roadmaps Plan #{PLAN_ID}</p>
     </div>
 
     <div class="tabs">
@@ -3521,13 +3495,12 @@ def main():
     print("=" * 70)
     print()
 
-    # Get JIRA Plan ranking
-    plan_id = get_jira_plan_id()
-    ranking = get_plan_feature_ranking(plan_id)
+    # Get JIRA Plan ranking from Advanced Roadmaps
+    ranking = get_plan_feature_ranking()
 
     if not ranking:
         print("⚠️  Warning: Could not retrieve plan ranking from JIRA")
-        print("   Features will be ordered by default JIRA ranking")
+        print("   Features will be ordered by default ranking")
         print()
 
     # Get all features
